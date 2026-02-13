@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* dark: sınıfları .dark class'ına bağla (Tailwind v4) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  scroll-behavior: smooth;
+}
