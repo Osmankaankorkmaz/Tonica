@@ -88,7 +88,7 @@ export default function WorkspacePage() {
       />
 
       {/* Bottom-left Tonibot */}
-      <Tonibot/>
+      <Tonibot model="gpt-4.1" />
     </main>
   );
 }

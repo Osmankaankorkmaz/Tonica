@@ -26,7 +26,7 @@ export default function LayoutShell({
     <>
       {!hideHeader && <Header />}
       <main>{children}</main>
-      {!hideHeader && <Footer />}
+      {!hideHeader && <Footer />}        
     </>
   );
 }

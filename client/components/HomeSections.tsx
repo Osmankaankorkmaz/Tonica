@@ -9,6 +9,7 @@ import type { Lang } from "@/lib/i18n";
 
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { meThunk, selectAuthInitialized, selectAuthUser } from "@/lib/store/authSlice";
+import Tonibot from "./workspace/Tonibot";
 
 type FAQItem = { q: string; a: string };
 type BlogItem = { title: string; desc: string; tag: string; date: string };
@@ -670,6 +671,7 @@ export default function HomeSections() {
             </button>
           </div>
         </div>
+        <Tonibot />
       </section>
     </>
   );
