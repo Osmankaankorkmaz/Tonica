@@ -49,26 +49,21 @@ export default function Header() {
     setMobileOpen(false);
   }
 
-  // ✅ Sayfa açılınca oturumu doğrula (bir kere)
+
   useEffect(() => {
     if (!initialized) {
       dispatch(meThunk() as any);
     }
   }, [initialized, dispatch]);
 
-  // ✅ CTA davranışı
   function onCtaClick(e?: React.MouseEvent) {
     e?.preventDefault();
     closeMobile();
 
-    // initialized değilse (daha me dönmeden) login yerine yönlendirmeyi bekletebilirsin.
-    // Ben "initialized false" ise de login'e atmasın diye, önce workspace'e değil, login'e değil:
-    // istersen burada bir loading state açarsın. Şimdilik: initialized false ise /login.
     const target = user ? "/workspace" : "/login";
     router.push(target);
   }
 
-  // hydration sırasında TR/EN flicker olmasın diye
   if (!ready) {
     return (
       <header className="sticky top-0 z-50">
@@ -86,12 +81,10 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50">
-      {/* İnce üst accent */}
       <div className="h-0.75 w-full bg-linear-to-r from-blue-600 via-sky-500 to-blue-600" />
 
       <div className="border-b border-blue-100/70 bg-white/75 backdrop-blur dark:border-blue-950/40 dark:bg-slate-950/70">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-3" aria-label="Tonica Home">
             <div className="relative">
               <div className="pointer-events-none absolute -inset-2 rounded-2xl bg-blue-500/10 blur-xl dark:bg-sky-400/10" />
@@ -106,7 +99,6 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* Desktop Nav */}
           <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
             {navItems.map((item) => (
               <a
@@ -120,11 +112,9 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Right Controls */}
           <div className="flex items-center gap-3">
-            <TopControls />
+            <TopControls variant="header"/>
 
-            {/* ✅ Desktop CTA */}
             <a
               href="#start"
               onClick={onCtaClick}
@@ -135,7 +125,6 @@ export default function Header() {
               {t.hero.cta1}
             </a>
 
-            {/* Mobile menu button */}
             <button
               type="button"
               onClick={() => setMobileOpen((s) => !s)}
@@ -150,7 +139,6 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {mobileOpen && (
           <div className="md:hidden">
             <div className="mx-auto max-w-6xl px-6 pb-4">
@@ -167,7 +155,6 @@ export default function Header() {
                   </a>
                 ))}
 
-                {/* ✅ Mobile CTA */}
                 <a
                   href="#start"
                   onClick={onCtaClick}

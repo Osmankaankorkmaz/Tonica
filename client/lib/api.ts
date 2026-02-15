@@ -1,4 +1,4 @@
-// lib/api.ts (veya senin mevcut ../api dosyan)
+
 export const API_BASE = (
   process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000/"
 ).replace(/\/+$/, "");
@@ -17,7 +17,7 @@ function normalizePath(path: string) {
   if (!path) return "/";
   let p = path.startsWith("/") ? path : `/${path}`;
 
-  // Senin eski sistemden kalan /api/users vs normalize
+
   p = p.replace(/^\/api\/user(s)?\//, "/");
   p = p.replace(/^\/user(s)?\//, "/");
 
@@ -52,7 +52,7 @@ export async function apiFetch<T = any>(
       ...(headers || {}),
     },
     body: json ? JSON.stringify(json) : rest.body,
-    // JWT kullanıyorsun → cookie şart değil ama sorun da değil
+
     credentials: "include",
     cache: "no-store",
   });

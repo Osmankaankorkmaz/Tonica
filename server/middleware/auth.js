@@ -17,10 +17,9 @@ const authenticationMid = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ Auth controller artık id/uid/roles basıyor → burada okuyabiliyoruz
     req.user = {
-      id: decoded.id,          // string
-      uid: decoded.uid,        // string | null
+      id: decoded.id,     
+      uid: decoded.uid,   
       roles: decoded.roles || ["user"],
     };
 

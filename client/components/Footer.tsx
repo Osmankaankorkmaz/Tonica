@@ -108,12 +108,10 @@ export default function Footer() {
 
   return (
     <footer className="relative border-t border-blue-100/70 bg-white dark:border-blue-950/40 dark:bg-slate-950">
-      {/* subtle top glow */}
       <div className="pointer-events-none absolute inset-x-0 -top-12 mx-auto h-24 max-w-6xl rounded-[48px] bg-linear-to-r from-blue-500/10 via-sky-400/10 to-blue-500/10 blur-2xl dark:from-sky-400/10 dark:via-blue-500/10 dark:to-sky-400/10" />
 
       <div className="mx-auto max-w-6xl px-6 py-12">
         <div className="grid gap-10 md:grid-cols-2 md:items-start">
-          {/* Left */}
           <div>
             <Link href="/" className="inline-flex items-center gap-3" aria-label="Tonica Home">
               <div className="relative">
@@ -152,7 +150,6 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Right */}
           <div className="md:justify-self-end">
             <div className="text-xs font-semibold tracking-wide text-slate-500 dark:text-slate-400">
               {lang === "tr" ? "KISAYOLLAR" : "SHORTCUTS"}

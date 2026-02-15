@@ -6,3 +6,13 @@
 html {
   scroll-behavior: smooth;
 }
+
+
+.invisible-scrollbar {
+  -ms-overflow-style: none;   
+  scrollbar-width: none;      
+}
+
+.invisible-scrollbar::-webkit-scrollbar {
+  display: none;           
+}

@@ -1,8 +1,7 @@
-// store/authSlice.ts
+
 import { createAsyncThunk, createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { apiFetch } from "../api";
 
-/** ---------- Types ---------- */
 export type User = {
   _id: string;
   fullName?: string;
@@ -49,7 +48,7 @@ const initialState: AuthState = {
   initialized: false,
 };
 
-/** ---------- API paths ---------- */
+
 const PATHS = {
   register: "/register",
   login: "/login",
@@ -57,7 +56,6 @@ const PATHS = {
   logout: "/logout",
 };
 
-/** ---------- Token Storage Helpers ---------- */
 const TOKEN_KEY = "tonica_token";
 
 function loadToken(): string | null {
@@ -74,16 +72,14 @@ function saveToken(token: string | null) {
   } catch {}
 }
 
-/** apiFetch ile header geçmek için küçük helper */
+
 async function authedFetch<T>(path: string, opts: any = {}, token?: string | null) {
   const headers = { ...(opts.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
   return apiFetch<T>(path, { ...opts, headers });
 }
 
-/** ---------- Thunks (Auth) ---------- */
 
-// ✅ Register: token gelir, sonra me ile user çek
 export const registerThunk = createAsyncThunk<
   { token: string; user: User },
   { email: string; password: string; fullName?: string; locale?: "tr" | "en" },
@@ -93,10 +89,8 @@ export const registerThunk = createAsyncThunk<
     const r = await apiFetch<{ ok: boolean; token: string }>(PATHS.register, { method: "POST", json: payload });
     const token = r.token;
 
-    // token'ı sakla
     saveToken(token);
 
-    // me ile user çek
     const meRes = await authedFetch<{ ok: boolean; user: User }>(PATHS.me, { method: "GET" }, token);
     return { token, user: meRes.user };
   } catch (e: any) {
@@ -104,7 +98,7 @@ export const registerThunk = createAsyncThunk<
   }
 });
 
-// ✅ Login: token gelir, sonra me ile user çek
+
 export const loginThunk = createAsyncThunk<
   { token: string; user: User },
   { email: string; password: string },
@@ -123,7 +117,6 @@ export const loginThunk = createAsyncThunk<
   }
 });
 
-// ✅ Me: localStorage token'ı varsa user getir
 export const meThunk = createAsyncThunk<
   { token: string | null; user: User | null },
   void,
@@ -136,31 +129,26 @@ export const meThunk = createAsyncThunk<
     const res = await authedFetch<{ ok: boolean; user: User }>(PATHS.me, { method: "GET" }, token);
     return { token, user: res.user };
   } catch (e: any) {
-    // token geçersizse temizle
     saveToken(null);
     return thunkAPI.rejectWithValue(e?.message || "Oturum doğrulanamadı.");
   }
 });
 
-// ✅ Logout: backend sadece ok döner, token'ı localden sil
 export const logoutThunk = createAsyncThunk<boolean, void, { rejectValue: string }>(
   "auth/logout",
   async (_, thunkAPI) => {
     try {
       const token = loadToken();
-      // logout endpoint'i auth istiyor, token ile çağır
       await authedFetch(PATHS.logout, { method: "GET" }, token);
       saveToken(null);
       return true;
     } catch (e: any) {
-      // logout hata verse bile local temizleyebilirsin
       saveToken(null);
       return thunkAPI.rejectWithValue(e?.message || "Çıkış başarısız.");
     }
   }
 );
 
-/** ---------- Slice ---------- */
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -168,7 +156,6 @@ const authSlice = createSlice({
     clearAuthError(state) {
       state.error = null;
     },
-    // dışarıdan user setlemek istersen
     setUser(state, action: PayloadAction<User | null>) {
       state.user = action.payload;
       state.initialized = true;
@@ -179,7 +166,6 @@ const authSlice = createSlice({
     },
   },
   extraReducers: (b) => {
-    // register
     b.addCase(registerThunk.pending, (s) => {
       s.loading = true;
       s.error = null;
@@ -196,7 +182,6 @@ const authSlice = createSlice({
       s.initialized = true;
     });
 
-    // login
     b.addCase(loginThunk.pending, (s) => {
       s.loading = true;
       s.error = null;
@@ -213,7 +198,6 @@ const authSlice = createSlice({
       s.initialized = true;
     });
 
-    // me
     b.addCase(meThunk.pending, (s) => {
       s.loading = true;
       s.error = null;
@@ -231,7 +215,6 @@ const authSlice = createSlice({
       s.initialized = true;
     });
 
-    // logout
     b.addCase(logoutThunk.fulfilled, (s) => {
       s.user = null;
       s.token = null;
@@ -240,7 +223,6 @@ const authSlice = createSlice({
       s.error = null;
     });
     b.addCase(logoutThunk.rejected, (s) => {
-      // local token zaten silindi
       s.user = null;
       s.token = null;
       s.initialized = true;
@@ -252,9 +234,6 @@ const authSlice = createSlice({
 export const { clearAuthError, setUser, setToken } = authSlice.actions;
 export default authSlice.reducer;
 
-/** =========================
- * ✅ Selectors (MEMOIZED)
- * ========================= */
 const selectAuthSlice = (s: any): AuthState => (s?.auth ? (s.auth as AuthState) : initialState);
 
 export const selectAuthUser = createSelector([selectAuthSlice], (a) => a.user);

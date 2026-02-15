@@ -14,9 +14,12 @@ const GenericErrorHandler = require("./middleware/GenericErrorHandler.js");
 const Users = require("./models/user.js");
 const db = require("./config/db.js");
 
-const userRoutes = require("./routes/user.js");
-const timeRoutes = require("./routes/time.js");
-const blogRoutes = require("./routes/blog.js");
+const authRoutes = require("./routes/auth.js");
+const aiRoutes = require("./routes/ai.js");
+const taskRoutes = require("./routes/tasks.js");
+const focusRoutes = require("./routes/focus.js");
+
+
 
 dotenv.config();
 
@@ -72,8 +75,6 @@ const ALLOWED_ORIGINS = new Set([
   "https://argena-hesapla.vercel.app",
 ]);
 
-// Vercel preview deploy: https://argena-hesapla-xxxxx-osmankaankorkmazs-projects.vercel.app
-// veya: https://argena-hesapla-git-main-osmankaankorkmazs-projects.vercel.app
 const ALLOWED_ORIGIN_REGEX = [
   /^https:\/\/.*-osmankaankorkmazs-projects\.vercel\.app$/,
   /^https:\/\/argena-hesapla-.*\.vercel\.app$/,
@@ -133,14 +134,11 @@ passport.use(
   })
 );
 
-/** ---------- Routes ---------- */
-app.get("/health", (req, res) => res.status(200).json({ ok: true }));
+app.use("/", authRoutes);
+app.use("/", aiRoutes);
+app.use("/", taskRoutes);
+app.use("/", focusRoutes);
 
-app.use("/", userRoutes);
-app.use("/", timeRoutes);
-app.use("/", blogRoutes);
-
-/** ---------- CORS error formatting ---------- */
 app.use((err, req, res, next) => {
   if (err?.message?.startsWith("Not allowed by CORS")) {
     return res.status(403).json({ message: err.message });
@@ -148,10 +146,8 @@ app.use((err, req, res, next) => {
   return next(err);
 });
 
-/** ---------- Global errors ---------- */
 app.use(GenericErrorHandler);
 
-/** ---------- Listen ---------- */
 const PORT = Number(process.env.PORT || 4000);
 app.listen(PORT, () => {
   console.log(`✅ Express uygulaması ${PORT} portunda çalışıyor`);

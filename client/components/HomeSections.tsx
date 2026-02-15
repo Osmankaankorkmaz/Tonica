@@ -1,500 +1,677 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, X, Send, Sparkles, CalendarDays, Compass, MessageCircle } from "lucide-react";
+import Link from "next/link";
+import { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import { useLocale } from "@/components/providers/LocaleProvider";
 import type { Lang } from "@/lib/i18n";
 
-declare global {
-  interface Window {
-    puter?: any;
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import { meThunk, selectAuthInitialized, selectAuthUser } from "@/lib/store/authSlice";
+import Tonibot from "./workspace/Tonibot";
+
+type FAQItem = { q: string; a: string };
+type BlogItem = { title: string; desc: string; tag: string; date: string };
+
+export default function HomeSections() {
+  const { lang, ready } = useLocale();
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+
+  const user = useAppSelector(selectAuthUser);
+  const initialized = useAppSelector(selectAuthInitialized);
+
+  // ✅ page mount -> me
+  useEffect(() => {
+    if (!initialized) dispatch(meThunk() as any);
+  }, [initialized, dispatch]);
+
+  // ✅ ortak yönlendirme
+  function goWorkspaceOrLogin() {
+    const target = user ? "/workspace" : "/login";
+    router.push(target);
   }
-}
 
-function cn(...classes: Array<string | false | undefined | null>) {
-  return classes.filter(Boolean).join(" ");
-}
-
-type Msg = { id: string; role: "user" | "bot"; text: string };
-
-type Props = {
-  selectedTaskTitle?: string | null;
-  model?: string; // "gpt-5-nano" vb
-};
-
-export default function Tonibot({ selectedTaskTitle = null, model = "gpt-5-nano" }: Props) {
-  const { lang, ready } = useLocale(); // ✅ HomeSections ile aynı
-  const L = (lang === "tr" ? "tr" : "en") as Lang;
+  // initialized gelmeden tıklanırsa yanlış yönlendirme olmasın diye
+  const ctaDisabled = !initialized;
 
   const copy = useMemo(() => {
     const tr = {
-      title: "Tonibot",
-      subtitle: "Genel sohbet",
-      ask: "Sor",
-      send: "Gönder",
-      placeholder: "Mesaj yaz…",
-      modelLabel: "Model",
-      aiReady: "AI ready ✅",
-      aiNotReady: "AI not ready ⚠️",
-      typing: "Tonibot yazıyor…",
-      cantAnswer: "Şu an cevap veremiyorum",
-      emptyAnswer: "Cevap alınamadı. (Boş yanıt)",
-      puterNotReady:
-        "Puter hazır değil / yüklenemedi.\n\n• Adblock kapat\n• js.puter.com engelli mi kontrol et\n• Sayfayı yenile\n\nAI yanıtı için Puter gerekli.",
-      welcome:
-        "Selam! Ben Tonibot 🤖\n\nNormal sohbet edebiliriz 😄 İstersen Tonica görevlerini de birlikte planlarız.\n\nBir şey sor 👇",
-      a11y: {
-        open: "Tonibot'u aç",
-        close: "Kapat",
-        closeOverlay: "Arka planı kapat",
+      featuresTitle: "Özellikler",
+      featuresDesc:
+        "Tonica, görevlerini düzenlerken sana akıllı öneriler sunan yapay destekli bir TODO deneyimidir. Hızlı karar ver, doğru işi seç, odaklan.",
+      featureCards: [
+        {
+          title: "Akıllı Görev Önerileri",
+          desc: "Günlük rutinine göre yeni görev önerileri ve mantıklı sonraki adımlar.",
+          badge: "AI",
+        },
+        {
+          title: "Başlık İyileştirme",
+          desc: "Kısa ve belirsiz görevleri daha net hale getirir, anlaşılır başlık önerir.",
+          badge: "AI",
+        },
+        {
+          title: "Öncelik & Etiketleme",
+          desc: "Öncelik (yüksek/orta/düşük) ve etiket önerileriyle hızlı düzenleme.",
+          badge: "AI",
+        },
+        {
+          title: "Focus Plan",
+          desc: "Bugün için küçük, uygulanabilir bir plan çıkarır: önce ne, sonra ne?",
+          badge: "AI",
+        },
+      ],
+      previewTitle: "Önizleme",
+      previewDesc:
+        "Board akışı net: Todo → Doing → Done. Yapay destekli önerilerle görevleri hızla netleştirip ilerletirsin.",
+      columns: [
+        { title: "Todo", bullets: ["Görev ekle", "AI ile başlığı netleştir"] },
+        {
+          title: "Doing",
+          bullets: ["Öncelik belirle", "Akıllı sonraki adım önerisi"],
+        },
+        { title: "Done", bullets: ["Tamamla", "Kısa özet oluştur (AI)"] },
+      ],
+      aboutTitle: "Tonica Hakkında",
+
+      aboutDesc:
+        "Tonica, karar verme süreçlerini sadeleştirmek ve dijital karmaşayı ortadan kaldırmak için tasarlanmış odaklı bir üretkenlik platformudur. Netlik ve düzen prensibiyle geliştirilen Tonica, dağınık görevleri yapılandırılmış bir akışa dönüştürerek niyetten aksiyona geçişi kesintisiz hale getirir. Osman Kaan Korkmaz tarafından tasarlanıp geliştirilen Tonica, gerçek üretkenliğin sadelik, akıllı destek ve temiz bir kullanıcı deneyimi ile mümkün olduğuna inanır.",
+
+      aboutPoints: [
+        "Minimal, tutarlı ve dikkat dağıtmayan arayüz",
+        "Karar süreçlerini hızlandıran akıllı öneriler",
+        "Yapılandırılmış akış sistemi: Planla → Uygula → Tamamla",
+        "Derin odak ve netlik için tasarlandı",
+        "Temiz mimari ve ölçeklenebilir yapı",
+      ],
+
+      stats: [
+        { k: "Akış Sistemi", v: "Planla → Yapılıyor → Tamamlandı" },
+        { k: "Temel Yaklaşım", v: "Sadelik + Akıllı Destek" },
+        { k: "Ana Hedef", v: "Netlik, odak ve anlamlı ilerleme" },
+        { k: "Geliştirici", v: "Osman Kaan Korkmaz" },
+      ],
+      faqTitle: "Sık Sorulan Sorular",
+      faq: [
+        {
+          q: "Yapay destek ne işe yarar?",
+          a: "Görev başlıklarını netleştirir, öncelik/etiket önerir ve gün planı için mantıklı adımlar sunar.",
+        },
+        {
+          q: "Önerileri kapatabilir miyim?",
+          a: "Evet. Yapay destek opsiyoneldir; istersen tamamen kapatıp klasik TODO olarak kullanabilirsin.",
+        },
+        {
+          q: "Verilerim kaybolur mu?",
+          a: "Görevler kalıcı olarak kaydedilir. Sayfayı yenilesen de listeni aynı şekilde görürsün.",
+        },
+      ] as FAQItem[],
+      contactTitle: "İletişim",
+      contactDesc:
+        "Geri bildirim, istek veya hata bildirimi gönderebilirsin. Tonica’yı daha iyi hale getirelim.",
+      form: {
+        name: "Ad Soyad",
+        email: "E-posta",
+        message: "Mesaj",
+        send: "Gönder",
       },
-      quick: {
-        helloLabel: "Selam: naber 😄",
-        funLabel: "Muhabbet: motivasyon 😅",
-        planLabel: "Günlük Plan Yap: hızlı",
-        helpLabel: "Tonica Yardım: düzen",
-        helloText: "Selam: naber 😄",
-        funText: "Muhabbet: Bana kısa bir motivasyon cümlesi yaz 😅",
-        planText: "Günlük Plan Yap: Bugün için küçük bir plan yapmama yardım eder misin?",
-        helpText: "Tonica Yardım: Tonica’da görevleri en iyi nasıl düzenlerim?",
-      },
-      system: {
-        langHint: "Use Turkish.",
-        style: "Friendly, short, practical. Use simple Turkish.",
-      },
+      blogTitle: "Blog",
+      blogDesc: "Güncellemeler, kullanım ipuçları ve üretkenlik notları.",
+      blog: [
+        {
+          tag: "İpucu",
+          date: "2026",
+          title: "Görev başlıklarını daha net yazmanın yolu",
+          desc: "Belirsiz görevleri, uygulanabilir adımlara dönüştürmenin pratik yöntemi.",
+        },
+        {
+          tag: "Odak",
+          date: "2026",
+          title: "Focus Plan ile günü bölmeden ilerle",
+          desc: "3 adımlı planla dağılmadan iş bitirme alışkanlığı.",
+        },
+        {
+          tag: "Akış",
+          date: "2026",
+          title: "Todo → Doing → Done: küçük bir sistem",
+          desc: "Basit bir akışla karmaşayı azaltıp ilerlemeyi görünür kıl.",
+        },
+      ] as BlogItem[],
+      startTitle: "Başlayalım",
+      startDesc:
+        "TODO board’a geç. Yapay destekle görevlerini netleştir, önceliklendir ve planla.",
+      startBtn: "TODO Board'a Git",
+      secondaryBtn: "Kısa Rehber",
+      boardBtn: "Board'a Git",
+      loadingCta: "Kontrol ediliyor…",
     };
 
     const en = {
-      title: "Tonibot",
-      subtitle: "General chat",
-      ask: "Ask",
-      send: "Send",
-      placeholder: "Type a message…",
-      modelLabel: "Model",
-      aiReady: "AI ready ✅",
-      aiNotReady: "AI not ready ⚠️",
-      typing: "Tonibot is typing…",
-      cantAnswer: "I can’t answer right now",
-      emptyAnswer: "No answer received. (Empty response)",
-      puterNotReady:
-        "Puter is not ready / failed to load.\n\n• Disable Adblock\n• Check if js.puter.com is blocked\n• Refresh the page\n\nPuter is required for AI replies.",
-      welcome:
-        "Hi! I’m Tonibot 🤖\n\nWe can chat casually 😄 and I can also help you plan your Tonica tasks.\n\nAsk me something 👇",
-      a11y: {
-        open: "Open Tonibot",
-        close: "Close",
-        closeOverlay: "Close overlay",
+      featuresTitle: "Features",
+      featuresDesc:
+        "Tonica is an AI-assisted TODO experience that helps you organize tasks with smart suggestions. Decide faster, pick the right next step, stay focused.",
+      featureCards: [
+        {
+          title: "Smart Task Suggestions",
+          desc: "Suggests useful tasks and logical next steps based on your routine.",
+          badge: "AI",
+        },
+        {
+          title: "Title Improvement",
+          desc: "Turns vague tasks into clear, actionable titles with better wording.",
+          badge: "AI",
+        },
+        {
+          title: "Priority & Tagging",
+          desc: "Recommends priority and tags so you can organize in seconds.",
+          badge: "AI",
+        },
+        {
+          title: "Focus Plan",
+          desc: "Builds a small, doable plan for today: what first, what next.",
+          badge: "AI",
+        },
+      ],
+      previewTitle: "Preview",
+      previewDesc:
+        "The flow is clear: Todo → Doing → Done. With AI assistance, you can refine tasks and move forward faster.",
+      columns: [
+        { title: "Todo", bullets: ["Create a task", "Refine title with AI"] },
+        {
+          title: "Doing",
+          bullets: ["Set priority", "Get smart next-step suggestions"],
+        },
+        { title: "Done", bullets: ["Complete", "Generate a short recap (AI)"] },
+      ],
+      aboutTitle: "About Tonica",
+
+      aboutDesc:
+        "Tonica is a focused productivity platform crafted to simplify decision-making and eliminate digital noise. Built with precision and clarity in mind, Tonica transforms scattered tasks into a structured flow — helping you move from intention to execution without distraction. Designed and developed by Osman Kaan Korkmaz, Tonica reflects a belief that true productivity comes from simplicity, smart assistance, and a clean user experience.",
+
+      aboutPoints: [
+        "Minimal, consistent and distraction-free interface",
+        "Smart suggestions that accelerate decisions",
+        "Structured flow system: Plan → Execute → Complete",
+        "Designed for deep focus and clarity",
+        "Engineered with scalability and clean architecture",
+      ],
+
+      stats: [
+        { k: "Flow System", v: "Plan → Doing → Done" },
+        { k: "Core Philosophy", v: "Simplicity powered by intelligence" },
+        { k: "Primary Goal", v: "Clarity, focus & meaningful progress" },
+        { k: "Created By", v: "Osman Kaan Korkmaz" },
+      ],
+      faqTitle: "FAQ",
+      faq: [
+        {
+          q: "What does AI assistance do?",
+          a: "It refines task titles, suggests priority/tags, and offers logical steps for your daily plan.",
+        },
+        {
+          q: "Can I turn suggestions off?",
+          a: "Yes. AI assistance is optional—you can disable it and use Tonica as a classic TODO app.",
+        },
+        {
+          q: "Will my data disappear?",
+          a: "Tasks are stored persistently. Even after refresh, your list remains the same.",
+        },
+      ] as FAQItem[],
+      contactTitle: "Contact",
+      contactDesc:
+        "Send feedback, requests, or bug reports. Let’s make Tonica better together.",
+      form: {
+        name: "Full name",
+        email: "Email",
+        message: "Message",
+        send: "Send",
       },
-      quick: {
-        helloLabel: "Hello: what’s up 😄",
-        funLabel: "Chat: motivation 😅",
-        planLabel: "Daily Plan: quick",
-        helpLabel: "Tonica Help: organize",
-        helloText: "Hello: what’s up 😄",
-        funText: "Chat: write a short motivation line 😅",
-        planText: "Daily Plan: help me make a small plan for today?",
-        helpText: "Tonica Help: how should I organize my tasks best?",
-      },
-      system: {
-        langHint: "Use English.",
-        style: "Friendly, short, practical. Use simple English.",
-      },
+      blogTitle: "Blog",
+      blogDesc: "Updates, tips, and productivity notes.",
+      blog: [
+        {
+          tag: "Tip",
+          date: "2026",
+          title: "How to write clearer task titles",
+          desc: "A practical method to turn vague tasks into actionable steps.",
+        },
+        {
+          tag: "Focus",
+          date: "2026",
+          title: "Move forward without breaking your day",
+          desc: "A 3-step plan to finish work without context switching.",
+        },
+        {
+          tag: "Workflow",
+          date: "2026",
+          title: "Todo → Doing → Done: a small system",
+          desc: "Reduce chaos and make progress visible with a simple flow.",
+        },
+      ] as BlogItem[],
+      startTitle: "Let’s start",
+      startDesc:
+        "Open the TODO board. Refine, prioritize, and plan your tasks with AI assistance.",
+      startBtn: "Open TODO Board",
+      secondaryBtn: "Quick Guide",
+      boardBtn: "Open board",
+      loadingCta: "Checking…",
     };
 
-    return L === "tr" ? tr : en;
-  }, [L]);
+    return lang === "tr" ? tr : en;
+  }, [lang]);
 
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [puterReady, setPuterReady] = useState(false);
-
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { id: "m1", role: "bot", text: "…" }, // ready gelince set edeceğiz
-  ]);
-
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  // ✅ Hydration sonrası ilk bot mesajını dile göre bas (HomeSections gibi flicker yok)
-  useEffect(() => {
-    if (!ready) return;
-    setMsgs((prev) => {
-      const userHasWritten = prev.some((m) => m.role === "user");
-      if (userHasWritten) return prev;
-      const copyMsgs = [...prev];
-      if (copyMsgs[0]?.role === "bot") copyMsgs[0] = { ...copyMsgs[0], text: copy.welcome };
-      return copyMsgs;
-    });
-  }, [ready, copy.welcome]);
-
-  // ✅ Puter hazır mı
-  useEffect(() => {
-    const tick = setInterval(() => {
-      if (window.puter?.ai?.chat) {
-        setPuterReady(true);
-        clearInterval(tick);
-      }
-    }, 120);
-
-    setTimeout(() => {
-      clearInterval(tick);
-      setPuterReady(!!window.puter?.ai?.chat);
-    }, 5000);
-
-    return () => clearInterval(tick);
-  }, []);
-
-  // open olduğunda fokus + scroll
-  useEffect(() => {
-    if (!open) return;
-    setTimeout(() => {
-      inputRef.current?.focus();
-      listRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
-    }, 60);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    setTimeout(() => listRef.current?.scrollTo({ top: 999999, behavior: "smooth" }), 40);
-  }, [msgs.length, open]);
-
-  // ESC ile kapat
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const system = useMemo(() => {
-    return [
-      "You are Tonibot, a friendly chat assistant inside the Tonica app.",
-      copy.system.langHint,
-      "",
-      "SCOPE (soft restriction):",
-      "- You can answer: Tonica usage, tasks, TODO workflows, productivity, planning, focus, habits, motivation, light casual chat.",
-      "- You should avoid: medical/legal/financial advice, politics, explicit adult content, hacking/illegal instructions, or anything unrelated to Tonica/productivity.",
-      "",
-      "SELF-DECISION RULE:",
-      "- Decide whether to answer based on whether the question is within scope.",
-      "- If it is clearly in-scope: answer helpfully.",
-      "- If it is borderline: ask ONE short clarifying question OR gently redirect to a Tonica/productivity angle.",
-      "- If it is out-of-scope: politely refuse in 1-2 sentences and offer a relevant Tonica/productivity alternative.",
-      "",
-      "STYLE:",
-      `- ${copy.system.style}`,
-      selectedTaskTitle ? `Context: user has a selected task titled: "${selectedTaskTitle}".` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-  }, [selectedTaskTitle, copy.system.langHint, copy.system.style]);
-
-  function push(role: Msg["role"], t: string) {
-    setMsgs((s) => [...s, { id: crypto.randomUUID(), role, text: t }]);
+  if (!ready) {
+    return (
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <div className="h-8 w-48 rounded-2xl bg-blue-50 dark:bg-slate-900/60" />
+        <div className="mt-4 h-4 w-full max-w-xl rounded-2xl bg-blue-50 dark:bg-slate-900/60" />
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-40 rounded-3xl bg-blue-50 dark:bg-slate-900/60" />
+          ))}
+        </div>
+      </div>
+    );
   }
-
-  function updateLastBotText(nextText: string) {
-    setMsgs((prev) => {
-      const copyMsgs = [...prev];
-      const last = copyMsgs[copyMsgs.length - 1];
-      if (!last || last.role !== "bot") return prev;
-      copyMsgs[copyMsgs.length - 1] = { ...last, text: nextText };
-      return copyMsgs;
-    });
-  }
-
-  function quick(action: "hello" | "planDay" | "tonicaHelp" | "fun") {
-    const map = {
-      hello: copy.quick.helloText,
-      planDay: copy.quick.planText,
-      tonicaHelp: copy.quick.helpText,
-      fun: copy.quick.funText,
-    } as const;
-
-    setOpen(true);
-    setTimeout(() => {
-      setText(map[action]);
-      inputRef.current?.focus();
-    }, 0);
-  }
-
-  async function onSend() {
-    const v = text.trim();
-    if (!v || sending) return;
-
-    setText("");
-    push("user", v);
-
-    if (!window.puter?.ai?.chat) {
-      push("bot", copy.puterNotReady);
-      return;
-    }
-
-    try {
-      setSending(true);
-      push("bot", "…");
-
-      const resp = await window.puter.ai.chat(
-        [
-          { role: "system", content: system },
-          ...msgs.map((m) => ({
-            role: m.role === "bot" ? "assistant" : "user",
-            content: m.text,
-          })),
-          { role: "user", content: v },
-        ],
-        { model, stream: true }
-      );
-
-      let acc = "";
-      for await (const part of resp) {
-        const t = part?.text ?? "";
-        if (!t) continue;
-        acc += t;
-        updateLastBotText(acc);
-      }
-      if (!acc.trim()) updateLastBotText(copy.emptyAnswer);
-    } catch (e: any) {
-      updateLastBotText(`${copy.cantAnswer}: ${e?.message || "AI error"}`);
-    } finally {
-      setSending(false);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }
-
-  // ✅ HomeSections gibi: ready gelmeden hiçbir şey render etme (flicker yok)
-  if (!ready) return null;
 
   return (
     <>
-      {/* Mobil overlay */}
-      {open ? (
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-[2px] sm:hidden"
-          aria-label={copy.a11y.closeOverlay}
-        />
-      ) : null}
 
-      <div className="fixed bottom-4 right-4 z-[9999] sm:bottom-6 sm:right-6">
-        <div className="flex flex-col items-end gap-3">
-          {/* Panel */}
-          {open ? (
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-x-0 -top-10 mx-auto h-40 max-w-6xl rounded-[48px] bg-linear-to-r from-blue-500/10 via-sky-400/10 to-blue-500/10 blur-2xl dark:from-sky-400/10 dark:via-blue-500/10 dark:to-sky-400/10" />
+      </div>
+
+      {/* FEATURES */}
+      <section id="features" className="mx-auto max-w-6xl px-6 py-12">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">{copy.featuresTitle}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {copy.featuresDesc}
+            </p>
+          </div>
+
+          <div
+            className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700
+                          dark:border-blue-950/40 dark:bg-slate-950/40 dark:text-sky-200"
+          >
+            <span className="h-2 w-2 rounded-full bg-blue-600 dark:bg-sky-500" />
+            {lang === "tr" ? "Yapay destek açık" : "AI assist on"}
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {copy.featureCards.map((c) => (
             <div
-              className={cn(
-                "w-[calc(100vw-2rem)] sm:w-[400px]",
-                "max-h-[70vh] sm:max-h-[520px]",
-                "overflow-hidden rounded-3xl border shadow-2xl",
-                "border-slate-200 bg-white",
-                "dark:border-white/10 dark:bg-slate-950"
-              )}
+              key={c.title}
+              className="group relative overflow-hidden rounded-3xl border border-blue-100 bg-white p-6 shadow-sm transition
+                         hover:-translate-y-0.5 hover:shadow-md hover:border-blue-200
+                         dark:border-blue-950/40 dark:bg-slate-900/60 dark:hover:border-blue-900/60"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-white/10">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-sm">
-                    <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 dark:from-sky-500 dark:to-blue-600" />
-                    <Bot className="relative h-5 w-5" />
-                  </span>
+              <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-500/10 blur-2xl opacity-0 transition group-hover:opacity-100 dark:bg-sky-400/10" />
 
-                  <div className="min-w-0">
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">{copy.title}</div>
-                    <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-                      {puterReady ? copy.aiReady : copy.aiNotReady}
-                      {selectedTaskTitle ? ` • ${selectedTaskTitle}` : ""}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "inline-flex h-9 w-9 items-center justify-center rounded-2xl border text-sm font-bold transition",
-                    "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-                    "dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200 dark:hover:bg-slate-950/70"
-                  )}
-                  aria-label={copy.a11y.close}
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-sm font-semibold text-slate-900 dark:text-white">{c.title}</div>
+                <span
+                  className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700
+                                 dark:bg-slate-950/40 dark:text-sky-200"
                 >
-                  <X className="h-4 w-4" />
-                </button>
+                  {c.badge}
+                </span>
               </div>
 
-              {/* Quick */}
-              <div className="flex flex-wrap gap-2 px-4 py-3">
-                <Quick onClick={() => quick("hello")} icon={<MessageCircle className="h-3.5 w-3.5" />}>
-                  {copy.quick.helloLabel}
-                </Quick>
-                <Quick onClick={() => quick("fun")} icon={<Sparkles className="h-3.5 w-3.5" />}>
-                  {copy.quick.funLabel}
-                </Quick>
-                <Quick onClick={() => quick("planDay")} icon={<CalendarDays className="h-3.5 w-3.5" />}>
-                  {copy.quick.planLabel}
-                </Quick>
-                <Quick onClick={() => quick("tonicaHelp")} icon={<Compass className="h-3.5 w-3.5" />}>
-                  {copy.quick.helpLabel}
-                </Quick>
-              </div>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{c.desc}</p>
 
-              {/* Messages */}
-              <div
-                ref={listRef}
-                className="px-4 pb-3 overflow-auto"
-                style={{ maxHeight: "calc(70vh - 176px)" }}
-              >
-                <div className="space-y-2">
-                  {msgs.map((m) => (
-                    <div
-                      key={m.id}
-                      className={cn(
-                        "rounded-2xl px-3 py-2 text-sm leading-relaxed",
-                        m.role === "bot"
-                          ? "bg-slate-100 text-slate-800 dark:bg-white/10 dark:text-slate-200"
-                          : "bg-blue-600 text-white dark:bg-sky-500"
-                      )}
-                    >
-                      <div
-                        className="prose prose-sm max-w-none prose-p:my-0 prose-ol:my-0 prose-ul:my-0 prose-li:my-0 dark:prose-invert"
-                        dangerouslySetInnerHTML={{ __html: renderMessage(m.text) }}
-                      />
-                    </div>
-                  ))}
-
-                  {sending ? (
-                    <div className="rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-600 dark:bg-white/10 dark:text-slate-300">
-                      {copy.typing}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Input */}
-              <div className="border-t border-slate-200 p-3 dark:border-white/10">
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={inputRef}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder={copy.placeholder}
-                    className={cn(
-                      "h-11 w-full rounded-2xl border px-3 text-sm outline-none transition",
-                      "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400",
-                      "focus:border-blue-300 focus:ring-2 focus:ring-blue-200/60",
-                      "dark:border-white/10 dark:bg-slate-950/40 dark:text-white dark:placeholder:text-slate-500",
-                      "dark:focus:border-sky-500/50 dark:focus:ring-sky-900/40"
-                    )}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") onSend();
-                    }}
-                  />
-
-                  <button
-                    onClick={onSend}
-                    disabled={!text.trim() || sending}
-                    className={cn(
-                      "h-11 rounded-2xl px-4 text-sm font-extrabold text-white transition inline-flex items-center gap-2",
-                      "bg-blue-600 hover:bg-blue-700",
-                      "dark:bg-sky-500 dark:hover:bg-sky-400",
-                      (!text.trim() || sending) && "opacity-60 cursor-not-allowed"
-                    )}
-                  >
-                    <Send className="h-4 w-4" />
-                    {copy.send}
-                  </button>
-                </div>
-
-                <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-                  {copy.modelLabel}: <span className="font-semibold">{model}</span>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-xs text-slate-500 dark:text-slate-400">{lang === "tr" ? "Detay" : "Details"}</div>
+                <div className="text-sm font-medium text-blue-700 transition group-hover:translate-x-0.5 dark:text-sky-200">
+                  →
                 </div>
               </div>
             </div>
-          ) : null}
+          ))}
+        </div>
+      </section>
 
-          {/* Floating button */}
-          {!open ? (
+      {/* PREVIEW */}
+      <section id="preview" className="mx-auto max-w-6xl px-6 py-12">
+        <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-white p-8 shadow-sm dark:border-blue-950/40 dark:bg-slate-900/60">
+          <div className="pointer-events-none absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl dark:bg-blue-500/10" />
+
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">{copy.previewTitle}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                {copy.previewDesc}
+              </p>
+            </div>
+
+            {/* ✅ aynı davranış */}
             <button
-              onClick={() => setOpen(true)}
-              className={cn(
-                "group relative flex items-center gap-3 rounded-full border px-3 py-3 shadow-2xl transition",
-                "border-slate-200 bg-white hover:bg-slate-50",
-                "dark:border-white/10 dark:bg-slate-950/70 dark:hover:bg-slate-950"
-              )}
-              aria-label={copy.a11y.open}
+              type="button"
+              disabled={ctaDisabled}
+              onClick={goWorkspaceOrLogin}
+              className={[
+                "inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-medium shadow-sm transition",
+                ctaDisabled
+                  ? "bg-slate-200 text-slate-500 cursor-not-allowed dark:bg-white/10 dark:text-slate-400"
+                  : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md dark:bg-sky-500 dark:hover:bg-sky-400",
+              ].join(" ")}
             >
-              <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-full text-white shadow-sm">
-                <span className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 dark:from-sky-500 dark:to-blue-600" />
-                <Bot className="relative h-5 w-5" />
-              </span>
+              {ctaDisabled ? copy.loadingCta : copy.boardBtn}
+            </button>
+          </div>
 
-              <div className="pr-1 text-left hidden sm:block">
-                <div className="text-sm font-extrabold text-slate-900 dark:text-white">{copy.title}</div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">{copy.subtitle}</div>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {copy.columns.map((col) => (
+              <div
+                key={col.title}
+                className="group rounded-2xl bg-blue-50 p-5 transition
+                           hover:bg-blue-100/70
+                           dark:bg-slate-950/40 dark:hover:bg-slate-950/60"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{col.title}</div>
+                  <span
+                    className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm
+                                   dark:bg-slate-900/60 dark:text-slate-300"
+                  >
+                    {lang === "tr" ? "Öneri" : "Assist"}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {col.bullets.map((it) => (
+                    <div
+                      key={it}
+                      className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 transition
+                                 hover:border-blue-200
+                                 dark:border-blue-950/40 dark:bg-slate-900/60 dark:text-white dark:hover:border-blue-900/60"
+                    >
+                      {it}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {lang === "tr"
+                ? "Öneriler, işi hızlandırmak için tasarlanır — kontrol sende."
+                : "Suggestions are designed to speed you up — you stay in control."}
+            </p>
+
+            <div
+              className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700
+                            dark:border-blue-950/40 dark:bg-slate-950/40 dark:text-sky-200"
+            >
+              {lang === "tr" ? "Responsive" : "Responsive"}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ABOUT */}
+      <section id="about" className="mx-auto max-w-6xl px-6 py-12">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 rounded-3xl border border-blue-100 bg-white p-8 shadow-sm dark:border-blue-950/40 dark:bg-slate-900/60">
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">{copy.aboutTitle}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{copy.aboutDesc}</p>
+
+            <ul className="mt-6 space-y-2">
+              {copy.aboutPoints.map((p) => (
+                <li key={p} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                  <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-50 text-blue-700 dark:bg-slate-950/40 dark:text-sky-200">
+                    ✓
+                  </span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-3xl bg-linear-to-br from-blue-600 to-sky-500 p-8 text-white shadow-sm">
+            <div className="text-sm font-semibold">{lang === "tr" ? "Özet" : "Summary"}</div>
+            <div className="mt-5 space-y-3">
+              {copy.stats.map((s) => (
+                <div key={s.k} className="rounded-2xl bg-white/10 p-4">
+                  <div className="text-xs text-white/80">{s.k}</div>
+                  <div className="mt-1 text-sm font-semibold">{s.v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="mx-auto max-w-6xl px-6 py-14">
+        <div className="flex items-end justify-between gap-6">
+          <div>
+            <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">{copy.faqTitle}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              Tonica ile ilgili en çok sorulan sorular. Tek tıkla aç, hızlıca netleşsin.
+            </p>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-300">
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            Quick answers
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {(copy.faq as FAQItem[]).map((item, idx) => {
+            const opened = openFaq === idx;
+
+            return (
+              <div key={item.q} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(opened ? null : idx)}
+                  className={[
+                    "group relative w-full text-left rounded-[26px] border p-6",
+                    "bg-white/80 backdrop-blur shadow-sm transition-all",
+                    "hover:-translate-y-0.5 hover:shadow-md",
+                    "border-slate-200 hover:border-slate-300",
+                    "dark:bg-slate-900/60 dark:border-white/10 dark:hover:border-white/15",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+                    "dark:focus-visible:ring-offset-slate-950",
+                  ].join(" ")}
+                  aria-expanded={opened}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-semibold leading-snug text-slate-900 dark:text-white">{item.q}</div>
+                      <div
+                        className="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600
+                                dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-300"
+                      >
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500" />
+                        Tonica FAQ
+                      </div>
+                    </div>
+
+                    <span
+                      className={[
+                        "shrink-0 mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full",
+                        "border border-slate-200 bg-white text-slate-700 shadow-sm transition",
+                        "group-hover:border-slate-300",
+                        "dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200",
+                      ].join(" ")}
+                    >
+                      <svg
+                        className={["h-4 w-4 transition-transform duration-200", opened ? "rotate-180" : "rotate-0"].join(" ")}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </span>
+                  </div>
+
+                  <div className={["grid transition-all duration-300 ease-out", opened ? "grid-rows-[1fr] opacity-100 mt-4" : "grid-rows-[0fr] opacity-0 mt-0"].join(" ")}>
+                    <div className="overflow-hidden">
+                      <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{item.a}</p>
+                      <div className="mt-4 h-px w-full bg-linear-to-r from-transparent via-slate-200 to-transparent dark:via-white/10" />
+                      <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>Son güncelleme: {new Date().getFullYear()}</span>
+                        <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                          Detay
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M7 17L17 7" />
+                            <path d="M7 7h10v10" />
+                          </svg>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* CONTACT */}
+      <section id="contact" className="mx-auto max-w-6xl px-6 py-12">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-1 rounded-3xl border border-blue-100 bg-white p-8 shadow-sm dark:border-blue-950/40 dark:bg-slate-900/60">
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">{copy.contactTitle}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{copy.contactDesc}</p>
+
+            <div className="mt-6 space-y-3">
+              <div className="rounded-2xl bg-blue-50 p-4 dark:bg-slate-950/40">
+                <div className="text-xs text-slate-500 dark:text-slate-400">{lang === "tr" ? "Yanıt Süresi" : "Response time"}</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{lang === "tr" ? "24–48 saat" : "24–48 hours"}</div>
+              </div>
+              <div className="rounded-2xl bg-blue-50 p-4 dark:bg-slate-950/40">
+                <div className="text-xs text-slate-500 dark:text-slate-400">{lang === "tr" ? "Konu" : "Topic"}</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                  {lang === "tr" ? "Geri bildirim / öneri" : "Feedback / request"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 rounded-3xl border border-blue-100 bg-white p-8 shadow-sm dark:border-blue-950/40 dark:bg-slate-900/60">
+            <form className="grid gap-4 md:grid-cols-2">
+              <input
+                className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition
+                           focus:border-blue-300 focus:ring-2 focus:ring-blue-200
+                           dark:border-blue-950/40 dark:bg-slate-950/40 dark:text-white dark:focus:ring-sky-900/40"
+                placeholder={copy.form.name}
+              />
+              <input
+                className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition
+                           focus:border-blue-300 focus:ring-2 focus:ring-blue-200
+                           dark:border-blue-950/40 dark:bg-slate-950/40 dark:text-white dark:focus:ring-sky-900/40"
+                placeholder={copy.form.email}
+              />
+              <textarea
+                className="md:col-span-2 min-h-35 rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition
+                           focus:border-blue-300 focus:ring-2 focus:ring-blue-200
+                           dark:border-blue-950/40 dark:bg-slate-950/40 dark:text-white dark:focus:ring-sky-900/40"
+                placeholder={copy.form.message}
+              />
+              <button
+                type="button"
+                className="md:col-span-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition
+                           hover:bg-blue-700 hover:shadow-md
+                           dark:bg-sky-500 dark:hover:bg-sky-400"
+              >
+                {copy.form.send}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* BLOG */}
+      <section id="blog" className="mx-auto max-w-6xl px-6 py-12">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">Blog</h2>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{copy.blogDesc}</p>
+          </div>
+          <a
+            href="#"
+            className="text-sm font-medium text-blue-700 hover:text-blue-800 transition
+                       dark:text-sky-300 dark:hover:text-sky-200"
+          >
+            {lang === "tr" ? "Tüm yazılar →" : "All posts →"}
+          </a>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {(copy.blog as BlogItem[]).map((p) => (
+            <div
+              key={p.title}
+              className="group rounded-3xl border border-blue-100 bg-white p-6 shadow-sm transition
+                         hover:-translate-y-0.5 hover:shadow-md hover:border-blue-200
+                         dark:border-blue-950/40 dark:bg-slate-900/60 dark:hover:border-blue-900/60"
+            >
+              <div className="flex items-center justify-between">
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-slate-950/40 dark:text-sky-200">
+                  {p.tag}
+                </span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{p.date}</span>
               </div>
 
-              <span className="ml-0 sm:ml-1 inline-flex h-7 items-center rounded-full bg-blue-50 px-2 text-[11px] font-bold text-blue-700 dark:bg-white/10 dark:text-sky-200">
-                {copy.ask}
-              </span>
-            </button>
-          ) : null}
+              <div className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">{p.title}</div>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{p.desc}</p>
+
+              <div className="mt-4 text-sm font-medium text-blue-700 transition group-hover:translate-x-0.5 dark:text-sky-200">
+                {lang === "tr" ? "Devamını oku →" : "Read more →"}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
+
+      {/* START */}
+      <section id="start" className="mx-auto max-w-6xl px-6 pb-16">
+        <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-blue-600 to-sky-500 p-10 text-white shadow-sm">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
+
+          <h3 className="text-2xl font-semibold">{copy.startTitle}</h3>
+          <p className="mt-2 max-w-2xl text-white/90">{copy.startDesc}</p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            {/* ✅ aynı davranış */}
+            <button
+              type="button"
+              disabled={ctaDisabled}
+              onClick={goWorkspaceOrLogin}
+              className={[
+                "rounded-2xl px-5 py-3 text-sm font-medium shadow-sm transition",
+                ctaDisabled ? "bg-white/30 text-white/80 cursor-not-allowed" : "bg-white text-blue-700 hover:bg-blue-50 hover:shadow-md",
+              ].join(" ")}
+            >
+              {ctaDisabled ? copy.loadingCta : copy.startBtn}
+            </button>
+
+            <button
+              type="button"
+              className="rounded-2xl border border-white/30 px-5 py-3 text-sm font-medium transition hover:bg-white/10"
+            >
+              {copy.secondaryBtn}
+            </button>
+          </div>
+        </div>
+        <Tonibot />
+      </section>
     </>
   );
-}
-
-function Quick({
-  children,
-  onClick,
-  icon,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  icon?: React.ReactNode;
-}) {
-  const rendered = (() => {
-    if (typeof children !== "string") return children;
-    const idx = children.indexOf(":");
-    if (idx > -1) {
-      const head = children.slice(0, idx + 1);
-      const rest = children.slice(idx + 1);
-      return (
-        <>
-          <span className="font-extrabold">{head}</span>
-          <span>{rest}</span>
-        </>
-      );
-    }
-    return children;
-  })();
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold transition",
-        "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-        "dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200 dark:hover:bg-slate-950/70"
-      )}
-    >
-      {icon ? <span className="opacity-90">{icon}</span> : null}
-      {rendered}
-    </button>
-  );
-}
-
-function renderMessage(text: string) {
-  let html = String(text || "");
-  html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-
-  const hasList = /^\s*\d+\.\s+/m.test(html);
-  html = html.replace(/^\s*\d+\.\s+(.*)$/gm, "<li>$1</li>");
-  if (hasList) html = `<ol class="list-decimal pl-5 space-y-1">${html}</ol>`;
-
-  html = html.replace(/\n/g, "<br/>");
-  return html;
 }

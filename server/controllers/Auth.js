@@ -3,10 +3,6 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const ApiError = require("../error/ApiError.js");
 
-/* ===========================
-   Helpers
-=========================== */
-
 function normalizeEmail(email) {
   return String(email || "").toLowerCase().trim();
 }
@@ -16,12 +12,11 @@ function signToken(user) {
     throw new ApiError("JWT_SECRET tanımlı değil (.env).", 500);
   }
 
-  // ✅ middleware decoded.id / decoded.uid bekliyor → payload'ı buna göre atıyoruz
   return jwt.sign(
     {
       id: String(user._id),
       uid: user.uid || null,
-      roles: user.roles || ["user"], // şemanda roles yoksa bile default
+      roles: user.roles || ["user"], 
     },
     process.env.JWT_SECRET,
     { expiresIn: "30d" }
@@ -34,15 +29,11 @@ function setAuthCookie(res, token) {
   res.cookie("token", token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: isProd, // prod'da https
-    maxAge: 1000 * 60 * 60 * 24 * 30, // 30 gün
+    secure: isProd,
+    maxAge: 1000 * 60 * 60 * 24 * 30,
   });
 }
 
-/* ===========================
-   REGISTER
-   POST /register
-=========================== */
 exports.register = async (req, res) => {
   try {
     const { fullName, email, password, locale } = req.body || {};
@@ -70,7 +61,6 @@ exports.register = async (req, res) => {
       email: e,
       passwordHash,
       locale: locale === "en" ? "en" : "tr",
-      // uid schema default üretmeli (sen ekledin)
     });
 
     const token = signToken(user);
@@ -78,12 +68,10 @@ exports.register = async (req, res) => {
 
     return res.status(201).json({
       ok: true,
-      token, // istersen frontend için dursun
+      token,
     });
   } catch (err) {
     console.error("REGISTER ERROR:", err);
-
-    // duplicate index yakala (email / uid vs)
     if (err?.code === 11000) {
       return res.status(409).json({ ok: false, message: "Bu kullanıcı zaten kayıtlı." });
     }
@@ -161,7 +149,6 @@ exports.me = async (req, res) => {
 =========================== */
 exports.logout = async (req, res) => {
   try {
-    // ✅ cookie’yi temizle
     res.clearCookie("token", { httpOnly: true, sameSite: "lax" });
     return res.json({ ok: true, message: "Çıkış yapıldı" });
   } catch (err) {

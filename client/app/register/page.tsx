@@ -13,7 +13,6 @@ function cn(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
 }
 
-/** --- Icons --- */
 function UserIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -131,7 +130,6 @@ function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-/** --- UI pieces --- */
 function Field({
   label,
   icon,
@@ -182,7 +180,6 @@ function InfoCard({ title, desc }: { title: string; desc: string }) {
   );
 }
 
-/** --- Password strength --- */
 function passwordRules(pw: string) {
   const s = String(pw || "");
   return {
@@ -323,13 +320,11 @@ export default function RegisterPage() {
       }) as any
     )) as any;
 
-    // ✅ yeni akış: registerThunk başarılıysa token kaydedilir ve user state doludur
     if (registerThunk.fulfilled.match(action)) {
-      router.push("/account"); // istersen "/todos"
+      router.push("/workspace");
     }
   }
 
-  // Hydration öncesi flicker olmasın
   if (!ready) {
     return (
       <main className="min-h-[calc(100vh-72px)]">
@@ -347,7 +342,6 @@ export default function RegisterPage() {
 
   return (
     <main className="relative min-h-[calc(100vh-72px)] bg-white dark:bg-slate-950">
-      {/* Background accents */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/2 h-56 w-130 -translate-x-1/2 rounded-full bg-blue-600/12 blur-3xl sm:h-72 sm:w-190 dark:bg-sky-400/10" />
         <div className="absolute -bottom-40 -right-30 h-56 w-56 rounded-full bg-sky-400/12 blur-3xl sm:h-72 sm:w-72 dark:bg-blue-500/10" />
@@ -356,7 +350,6 @@ export default function RegisterPage() {
 
       <div className="relative mx-auto w-full max-w-275 px-4 py-8 sm:px-6 sm:py-12">
         <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-10">
-          {/* FORM */}
           <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -462,7 +455,6 @@ export default function RegisterPage() {
                     </button>
                   </div>
 
-                  {/* password rules */}
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-white/70 p-4 text-xs dark:border-white/10 dark:bg-slate-950/30">
                     <div className="text-xs font-semibold text-slate-900 dark:text-white">
                       {copy.rulesTitle}
@@ -501,7 +493,6 @@ export default function RegisterPage() {
                   </div>
                 </label>
 
-                {/* locale select */}
                 <label className="grid gap-1">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                     {copy.language}
@@ -522,7 +513,6 @@ export default function RegisterPage() {
                   </select>
                 </label>
 
-                {/* agree */}
                 <label className="mt-1 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
                   <input
                     type="checkbox"
@@ -586,7 +576,6 @@ export default function RegisterPage() {
             </div>
           </motion.section>
 
-          {/* INFO */}
           <motion.aside
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

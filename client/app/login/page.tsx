@@ -13,7 +13,7 @@ function cn(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
 }
 
-/** --- Icons --- */
+
 function MailIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -85,7 +85,6 @@ function EyeOffIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-/** --- UI pieces --- */
 function Field({
   label,
   icon,
@@ -220,7 +219,7 @@ export default function TonicaLoginPage() {
     dispatch(clearAuthError());
 
     const res = await dispatch(loginThunk({ email: email.trim(), password }));
-    if (loginThunk.fulfilled.match(res)) router.push("/account"); // istersen "/todos"
+    if (loginThunk.fulfilled.match(res)) router.push("/workspace");
   }
 
   if (!ready) {
@@ -240,7 +239,6 @@ export default function TonicaLoginPage() {
 
   return (
     <main className="relative min-h-[calc(100vh-72px)] bg-white dark:bg-slate-950">
-      {/* Background accents */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/2 h-56 w-130 -translate-x-1/2 rounded-full bg-blue-600/12 blur-3xl sm:h-72 sm:w-190 dark:bg-sky-400/10" />
         <div className="absolute -bottom-40 -right-30 h-56 w-56 rounded-full bg-sky-400/12 blur-3xl sm:h-72 sm:w-72 dark:bg-blue-500/10" />
@@ -249,7 +247,6 @@ export default function TonicaLoginPage() {
 
       <div className="relative mx-auto w-full max-w-275 px-4 py-8 sm:px-6 sm:py-12">
         <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-10">
-          {/* FORM */}
           <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -393,7 +390,6 @@ export default function TonicaLoginPage() {
             </div>
           </motion.section>
 
-          {/* INFO */}
           <motion.aside
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

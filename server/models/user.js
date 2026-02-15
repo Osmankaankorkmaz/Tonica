@@ -4,97 +4,97 @@ const { nanoid } = require("nanoid");
 const { Schema } = mongoose;
 
 /* ===========================
-   Embedded Schemas
+   Task Schema (Embedded)
 =========================== */
 
-// Tag
-const TagSchema = new Schema({
-  _id: { type: String, default: () => nanoid() },
-  name: { type: String, required: true, trim: true, maxlength: 24 },
-  color: { type: String, trim: true, maxlength: 16 },
-});
-
-// Category
-const CategorySchema = new Schema({
-  _id: { type: String, default: () => nanoid() },
-  name: { type: String, required: true, trim: true, maxlength: 32 },
-  icon: { type: String, trim: true, maxlength: 32 },
-});
-
-// Task
-const TaskSchema = new Schema({
-  _id: { type: String, default: () => nanoid() },
-
-  title: { type: String, required: true, trim: true, maxlength: 140 },
-  description: { type: String, trim: true, maxlength: 2000 },
-
-  status: {
-    type: String,
-    enum: ["todo", "doing", "done"],
-    default: "todo",
-  },
-
-  priority: {
-    type: String,
-    enum: ["low", "medium", "high"],
-    default: "medium",
-  },
-
-  tagIds: [{ type: String }],
-  categoryId: { type: String },
-
-  order: { type: Number, default: 0 },
-
-  dueAt: { type: Date },
-  startedAt: { type: Date },
-  completedAt: { type: Date },
-
-  aiRecap: { type: String, trim: true, maxlength: 1000 },
-
-  archived: { type: Boolean, default: false },
-});
-
-// Focus Plan
-const FocusPlanSchema = new Schema(
+const TaskSchema = new Schema(
   {
-    dateKey: { type: String, required: true }, // "2026-02-12"
+    title: { type: String, required: true, trim: true, maxlength: 140 },
 
-    items: [
-      {
-        taskId: { type: String },
-        titleSnapshot: { type: String, trim: true, maxlength: 140 },
-        order: { type: Number, default: 0 },
+    // ✅ NEW: Açıklama
+    description: { type: String, trim: true, maxlength: 2000, default: "" },
+
+    status: {
+      type: String,
+      enum: ["todo", "in_progress", "done"],
+      default: "todo",
+      index: true,
+    },
+
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"], // "urgent" yok (UI'da urgent seçilirse high'a map'le)
+      default: "medium",
+      index: true,
+    },
+
+    category: {
+      type: String,
+      trim: true,
+      maxlength: 60,
+      default: "General",
+      index: true,
+    },
+
+    dueAt: { type: Date, default: null, index: true },
+
+    // ✅ NEW: Tahmini Süre (dk)
+    durationMinutes: { type: Number, default: 0, min: 0, max: 24 * 60 },
+
+    // ✅ NEW: Etiketler ( "design, frontend, urgent" => ["design","frontend","urgent"] )
+    tags: {
+      type: [String],
+      default: [],
+      validate: {
+        validator(arr) {
+          return Array.isArray(arr) && arr.every((x) => typeof x === "string" && x.length <= 24);
+        },
+        message: "Geçersiz tags",
       },
-    ],
-
-    aiSummary: { type: String, trim: true, maxlength: 1200 },
-    createdAt: { type: Date, default: Date.now },
+      index: true,
+    },
   },
-  { _id: false }
+  { _id: true, timestamps: true }
 );
 
-// AI History
-const AiHistorySchema = new Schema(
+
+/* ===========================
+   Focus Plan Schema (Minimal)
+=========================== */
+
+const FocusPlanSchema = new Schema(
   {
-    type: {
-      type: String,
-      enum: [
-        "task_suggestion",
-        "title_improve",
-        "priority_tag",
-        "next_step",
-        "recap",
-        "focus_plan",
-      ],
-      required: true,
-    },
-    taskId: { type: String },
-    input: { type: Schema.Types.Mixed },
-    output: { type: Schema.Types.Mixed },
-    applied: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now },
+    title: { type: String, required: true, trim: true, maxlength: 120 },
+    goal: { type: String, trim: true, maxlength: 300 },
+    durationMinutes: { type: Number, default: 25, min: 1, max: 12 * 60 },
   },
-  { _id: false }
+  { _id: true, timestamps: true }
+);
+
+/* ===========================
+   Focus Session Schema (NEW)
+   (FocusPage uyumlu)
+=========================== */
+
+const FocusSessionSchema = new Schema(
+  {
+    // FocusPage: selectedTaskId opsiyonel
+    taskId: { type: Schema.Types.ObjectId, default: null },
+
+    // FocusPage: duration (seconds)
+    durationSeconds: { type: Number, required: true, min: 60, max: 24 * 60 * 60 },
+
+    // Oturum takip
+    startedAt: { type: Date, default: Date.now, index: true },
+    endedAt: { type: Date, default: null },
+
+    // prev<=1 olunca complete say
+    completed: { type: Boolean, default: false, index: true },
+
+    // ileride pause/resume için (şimdilik optional)
+    pausedSeconds: { type: Number, default: 0, min: 0 },
+  },
+  { _id: true, timestamps: true }
 );
 
 /* ===========================
@@ -103,13 +103,7 @@ const AiHistorySchema = new Schema(
 
 const UserSchema = new Schema(
   {
-    // ✅ DB’de uid_1 unique index var, burada alanı tanımlıyoruz
-    uid: {
-      type: String,
-      default: () => nanoid(12),
-      unique: true,
-      index: true,
-    },
+    uid: { type: String, default: () => nanoid(12), unique: true },
 
     fullName: { type: String, trim: true, maxlength: 80 },
 
@@ -126,47 +120,36 @@ const UserSchema = new Schema(
 
     locale: { type: String, enum: ["tr", "en"], default: "tr" },
 
-    settings: {
-      aiAssistEnabled: { type: Boolean, default: true },
-
-      ai: {
-        titleImprove: { type: Boolean, default: true },
-        priorityTagSuggest: { type: Boolean, default: true },
-        nextStepSuggest: { type: Boolean, default: true },
-        focusPlan: { type: Boolean, default: true },
-        tone: {
-          type: String,
-          enum: ["concise", "balanced", "detailed"],
-          default: "balanced",
-        },
-      },
-    },
-
-    tags: { type: [TagSchema], default: [] },
-    categories: { type: [CategorySchema], default: [] },
     tasks: { type: [TaskSchema], default: [] },
+
     focusPlans: { type: [FocusPlanSchema], default: [] },
-    aiHistory: { type: [AiHistorySchema], default: [] },
+
+    // ✅ FocusPage için kalıcı istatistik kaynağı
+    focusSessions: { type: [FocusSessionSchema], default: [] },
 
     lastLoginAt: { type: Date },
   },
   { timestamps: true }
 );
 
-// (Opsiyonel ama iyi) Index’i kodda da garanti et
-UserSchema.index({ uid: 1 }, { unique: true });
+/* ===========================
+   Indexes
+=========================== */
+
+UserSchema.index({ "tasks.status": 1 });
+UserSchema.index({ "tasks.dueAt": 1 });
+UserSchema.index({ "tasks.category": 1 });
+
+// Focus stats için
+UserSchema.index({ "focusSessions.startedAt": 1 });
+UserSchema.index({ "focusSessions.completed": 1 });
 
 /* ===========================
-   AI HISTORY LIMIT (MAX 25)
+   Hooks
 =========================== */
 
 UserSchema.pre("save", function (next) {
-  // ✅ ekstra güvenlik: uid yoksa set et
   if (!this.uid) this.uid = nanoid(12);
-
-  if (this.aiHistory.length > 25) {
-    this.aiHistory = this.aiHistory.slice(-25);
-  }
   next();
 });
 

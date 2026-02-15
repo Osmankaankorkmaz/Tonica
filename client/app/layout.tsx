@@ -1,9 +1,9 @@
-// app/layout.tsx
 import "./globals.css";
 import Script from "next/script";
 import { LocaleProvider } from "@/components/providers/LocaleProvider";
 import Providers from "./providers";
 import LayoutShell from "@/components/LayoutShell";
+import AiStateResetOnReload from "@/components/workspace/AiStateResetOnReload";
 
 export const metadata = {
   title: "Tonica TODO",
@@ -25,19 +25,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
-        {/* Puter.js */}
-        <Script
-          src="https://js.puter.com/v2/"
-          strategy="beforeInteractive"
-        />
-
-        {/* Theme init */}
+    
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
 
       <body className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-white">
         <LocaleProvider>
           <Providers>
+            <AiStateResetOnReload/>
             <LayoutShell>{children}</LayoutShell>
           </Providers>
         </LocaleProvider>

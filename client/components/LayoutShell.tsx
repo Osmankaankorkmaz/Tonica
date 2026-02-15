@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Tonibot from "./workspace/Tonibot";
 
 export default function LayoutShell({
   children,
@@ -16,9 +17,18 @@ export default function LayoutShell({
     "/login",
     "/register",
     "/forgot-password",
+    "/workspace"
+  ];
+    const hideComponentRoutes = [
+    "/login",
+    "/register",
+    "/forgot-password",
   ];
 
   const hideHeader = hideHeaderRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+  const hideCompenent = hideComponentRoutes.some((route) =>
     pathname.startsWith(route)
   );
 
@@ -26,7 +36,9 @@ export default function LayoutShell({
     <>
       {!hideHeader && <Header />}
       <main>{children}</main>
-      {!hideHeader && <Footer />}        
+      {!hideCompenent && <Footer />}   
+      {!hideCompenent && <Tonibot />}   
+
     </>
   );
 }

@@ -1,37 +1,100 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, X, Send, Sparkles, CalendarDays, Compass, MessageCircle } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bot,
+  X,
+  Send,
+  Sparkles,
+  CalendarDays,
+  Compass,
+  MessageCircle,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 
 import { useLocale } from "@/components/providers/LocaleProvider";
 import type { Lang } from "@/lib/i18n";
 
-declare global {
-  interface Window {
-    puter?: any;
-  }
-}
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import {
+  aiInitThunk,
+  aiChatThunk,
+  setAiOpen,
+  selectAiOpen,
+  selectAiMsgs,
+  selectAiSending,
+  selectAiServerReady,
+  selectAiModel,
+  setAiModel,
+} from "@/lib/store/aiSlice";
 
 function cn(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
 }
 
-type Msg = { id: string; role: "user" | "bot"; text: string };
-
 type Props = {
   selectedTaskTitle?: string | null;
-  model?: string; // "gpt-5-nano" vb
+  model?: string;
 };
 
-export default function Tonibot({ selectedTaskTitle = null, model = "gpt-5-nano" }: Props) {
-  const { lang, ready } = useLocale(); // ✅ senin app dili buradan geliyor
-  const [open, setOpen] = useState(false);
+type UiMsg = { id: string; role: "user" | "bot"; text: string };
+
+function normalizeMsgs(input: any): UiMsg[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((m, idx) => {
+      const id =
+        (typeof m?.id === "string" && m.id) ||
+        (typeof m?._id === "string" && m._id) ||
+        `m_${idx}`;
+
+      const rawRole = m?.role;
+      const role: "user" | "bot" =
+        rawRole === "bot" || rawRole === "assistant" ? "bot" : "user";
+
+      const text =
+        (typeof m?.text === "string" && m.text) ||
+        (typeof m?.content === "string" && m.content) ||
+        (typeof m?.message === "string" && m.message) ||
+        "";
+
+      return { id, role, text };
+    })
+    .filter((m) => typeof m.text === "string");
+}
+
+export default function Tonibot({
+  selectedTaskTitle = null,
+  model = "gpt-5-nano",
+}: Props) {
+  const { lang, ready } = useLocale();
+  const dispatch = useAppDispatch();
+
+  const open = !!useAppSelector(selectAiOpen);
+  const msgsRaw = useAppSelector(selectAiMsgs);
+  const sending = !!useAppSelector(selectAiSending);
+  const serverReady = !!useAppSelector(selectAiServerReady);
+
+  const storedModelRaw = useAppSelector(selectAiModel);
+  const storedModel =
+    typeof storedModelRaw === "string" && storedModelRaw
+      ? storedModelRaw
+      : model;
+
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [puterReady, setPuterReady] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    dispatch(aiInitThunk());
+  }, [dispatch]);
+
+
+  useEffect(() => {
+    if (model && model !== storedModel) dispatch(setAiModel(model));
+  }, [model, dispatch]);
 
   const copy = useMemo(() => {
     const tr = {
@@ -42,34 +105,31 @@ export default function Tonibot({ selectedTaskTitle = null, model = "gpt-5-nano"
       },
       ui: {
         title: "Tonibot",
-        subtitle: "Genel sohbet",
+        subtitle: "Tonica Asistanı",
         ask: "Sor",
-        placeholder: "Mesaj yaz…",
+        placeholder: "Mesaj yaz… (Enter: gönder, Shift+Enter: satır)",
         send: "Gönder",
         model: "Model",
         typing: "Tonibot yazıyor…",
-        aiReady: "AI hazır ✅",
-        aiNotReady: "AI hazır değil ⚠️",
+        aiReady: "Bağlı",
+        aiNotReady: "Bağlantı yok",
+        quickTitle: "Hızlı Başlat",
       },
       bot: {
         welcome:
-          "Selam! Ben Tonibot 🤖\n\nNormal sohbet edebiliriz 😄 İstersen Tonica görevlerini de birlikte planlarız.\n\nBir şey sor 👇",
-        puterNotReady:
-          "Puter hazır değil / yüklenemedi.\n\n• Adblock kapat\n• js.puter.com engelli mi kontrol et\n• Sayfayı yenile\n\nAI yanıtı için Puter gerekli.",
-        emptyAnswer: "Cevap alınamadı. (Boş yanıt)",
-        cantAnswer: "Şu an cevap veremiyorum",
+          "Selam! 👋 Ben Tonibot.\n\nİstersen 2-3 kısa hedef belirleyelim ya da görevlerini hızlıca toparlayalım.\n\nBaşlayalım mı?",
       },
       quick: {
-        hello: "Selam: naber 😄",
-        fun: "Muhabbet: motivasyon 😅",
-        planDay: "Günlük Plan Yap: hızlı",
-        tonicaHelp: "Tonica Yardım: düzen",
+        hello: "Selam",
+        fun: "Motivasyon",
+        planDay: "Gün Planı",
+        tonicaHelp: "Tonica Düzen",
       },
       quickPrompts: {
-        hello: "Selam: naber 😄",
-        fun: "Muhabbet: Bana kısa bir motivasyon cümlesi yaz 😅",
-        planDay: "Günlük Plan Yap: Bugün için küçük bir plan yapmama yardım eder misin?",
-        tonicaHelp: "Tonica Yardım: Tonica’da görevleri en iyi nasıl düzenlerim?",
+        hello: "Selam! Nasılsın? 😄",
+        fun: "Bana tek cümlelik bir motivasyon yaz 😅",
+        planDay: "Bugün için 3 küçük hedef belirleyelim.",
+        tonicaHelp: "Tonica’da görevleri en iyi nasıl düzenlerim?",
       },
     };
 
@@ -81,98 +141,36 @@ export default function Tonibot({ selectedTaskTitle = null, model = "gpt-5-nano"
       },
       ui: {
         title: "Tonibot",
-        subtitle: "General chat",
+        subtitle: "Tonica Assistant",
         ask: "Ask",
-        placeholder: "Type a message…",
+        placeholder: "Type a message… (Enter: send, Shift+Enter: new line)",
         send: "Send",
         model: "Model",
         typing: "Tonibot is typing…",
-        aiReady: "AI ready ✅",
-        aiNotReady: "AI not ready ⚠️",
+        aiReady: "Online",
+        aiNotReady: "Offline",
+        quickTitle: "Quick start",
       },
       bot: {
         welcome:
-          "Hi! I’m Tonibot 🤖\n\nWe can chat casually 😄 and I can also help you plan your Tonica tasks.\n\nAsk me something 👇",
-        puterNotReady:
-          "Puter is not ready / failed to load.\n\n• Disable Adblock\n• Check if js.puter.com is blocked\n• Refresh the page\n\nPuter is required for AI replies.",
-        emptyAnswer: "No answer received. (Empty response)",
-        cantAnswer: "I can’t answer right now",
+          "Hi! 👋 I’m Tonibot.\n\nWe can set 2–3 small goals or quickly organize your tasks.\n\nWant to start?",
       },
       quick: {
-        hello: "Hello: what’s up 😄",
-        fun: "Chat: motivation 😅",
-        planDay: "Daily Plan: quick",
-        tonicaHelp: "Tonica Help: organize",
+        hello: "Hello",
+        fun: "Motivation",
+        planDay: "Plan Today",
+        tonicaHelp: "Organize",
       },
       quickPrompts: {
-        hello: "Hello: what’s up 😄",
-        fun: "Chat: write a short motivation line 😅",
-        planDay: "Daily Plan: can you help me make a small plan for today?",
-        tonicaHelp: "Tonica Help: how should I organize my tasks best?",
+        hello: "Hello! How are you? 😄",
+        fun: "Write me a one-line motivation 😅",
+        planDay: "Let’s set 3 small goals for today.",
+        tonicaHelp: "How should I organize tasks in Tonica best?",
       },
     };
 
     return (lang as Lang) === "tr" ? tr : en;
   }, [lang]);
-
-  // ✅ mesajları init et (dil değişince, kullanıcı yazmadıysa welcome’ı güncelle)
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { id: "m1", role: "bot", text: "…" }, // ready gelince replace edeceğiz
-  ]);
-
-  useEffect(() => {
-    if (!ready) return;
-    setMsgs((prev) => {
-      const userHasWritten = prev.some((m) => m.role === "user");
-      if (userHasWritten) return prev;
-
-      const copyMsgs = [...prev];
-      if (copyMsgs[0]?.role === "bot") {
-        copyMsgs[0] = { ...copyMsgs[0], text: copy.bot.welcome };
-      }
-      return copyMsgs;
-    });
-  }, [ready, copy.bot.welcome]);
-
-  // Puter hazır mı kontrol
-  useEffect(() => {
-    const tick = setInterval(() => {
-      if (window.puter?.ai?.chat) {
-        setPuterReady(true);
-        clearInterval(tick);
-      }
-    }, 120);
-
-    setTimeout(() => {
-      clearInterval(tick);
-      setPuterReady(!!window.puter?.ai?.chat);
-    }, 5000);
-
-    return () => clearInterval(tick);
-  }, []);
-
-  // open olduğunda fokus + scroll
-  useEffect(() => {
-    if (!open) return;
-    setTimeout(() => {
-      inputRef.current?.focus();
-      listRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
-    }, 60);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    setTimeout(() => listRef.current?.scrollTo({ top: 999999, behavior: "smooth" }), 40);
-  }, [msgs.length, open]);
-
-  // ESC ile kapat
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
 
   const system = useMemo(() => {
     const isTR = (lang as Lang) === "tr";
@@ -184,273 +182,297 @@ export default function Tonibot({ selectedTaskTitle = null, model = "gpt-5-nano"
       "- You can answer: Tonica usage, tasks, TODO workflows, productivity, planning, focus, habits, motivation, light casual chat.",
       "- You should avoid: medical/legal/financial advice, politics, explicit adult content, hacking/illegal instructions, or anything unrelated to Tonica/productivity.",
       "",
-      "SELF-DECISION RULE:",
-      "- Decide whether to answer based on whether the question is within scope.",
-      "- If it is clearly in-scope: answer helpfully.",
-      "- If it is borderline: ask ONE short clarifying question OR gently redirect to a Tonica/productivity angle.",
-      "- If it is out-of-scope: politely refuse in 1-2 sentences and offer a relevant Tonica/productivity alternative.",
-      "",
       "STYLE:",
-      isTR ? "- Friendly, short, practical. Use simple Turkish." : "- Friendly, short, practical. Use simple English.",
-      selectedTaskTitle ? `Context: user has a selected task titled: "${selectedTaskTitle}".` : "",
+      isTR
+        ? "- Friendly, short, practical. Use simple Turkish."
+        : "- Friendly, short, practical. Use simple English.",
+      selectedTaskTitle
+        ? `Context: user has a selected task titled: "${selectedTaskTitle}".`
+        : "",
     ]
       .filter(Boolean)
       .join("\n");
   }, [selectedTaskTitle, lang]);
 
-  function push(role: Msg["role"], t: string) {
-    setMsgs((s) => [...s, { id: crypto.randomUUID(), role, text: t }]);
-  }
+  const safeMsgs = useMemo(() => normalizeMsgs(msgsRaw), [msgsRaw]);
+  const viewMsgs: UiMsg[] =
+    safeMsgs.length > 0
+      ? safeMsgs
+      : [{ id: "welcome", role: "bot", text: copy.bot.welcome }];
 
-  function updateLastBotText(nextText: string) {
-    setMsgs((prev) => {
-      const copyMsgs = [...prev];
-      const last = copyMsgs[copyMsgs.length - 1];
-      if (!last || last.role !== "bot") return prev;
-      copyMsgs[copyMsgs.length - 1] = { ...last, text: nextText };
-      return copyMsgs;
-    });
-  }
-
-  function quick(action: "hello" | "planDay" | "tonicaHelp" | "fun") {
-    const map = copy.quickPrompts;
-    setOpen(true);
-    setTimeout(() => {
-      setText(map[action]);
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
       inputRef.current?.focus();
-    }, 0);
+      listRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(
+      () => listRef.current?.scrollTo({ top: 999999, behavior: "smooth" }),
+      60,
+    );
+    return () => clearTimeout(t);
+  }, [open, viewMsgs.length, sending]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dispatch(setAiOpen(false));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dispatch]);
+
+  function quick(action: keyof typeof copy.quickPrompts) {
+    dispatch(setAiOpen(true));
+    const v = copy.quickPrompts[action] || "";
+    setText(v);
+    setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  async function onSend() {
-    const v = text.trim();
-    if (!v || sending) return;
+  function send(v: string) {
+    const t = v.trim();
+    if (!t || sending) return;
 
     setText("");
-    push("user", v);
-
-    if (!window.puter?.ai?.chat) {
-      push("bot", copy.bot.puterNotReady);
-      return;
-    }
-
-    try {
-      setSending(true);
-      push("bot", "…");
-
-      const resp = await window.puter.ai.chat(
-        [
-          { role: "system", content: system },
-          ...msgs.map((m) => ({
-            role: m.role === "bot" ? "assistant" : "user",
-            content: m.text,
-          })),
-          { role: "user", content: v },
-        ],
-        { model, stream: true }
-      );
-
-      let acc = "";
-      for await (const part of resp) {
-        const t = part?.text ?? "";
-        if (!t) continue;
-        acc += t;
-        updateLastBotText(acc);
-      }
-      if (!acc.trim()) updateLastBotText(copy.bot.emptyAnswer);
-    } catch (e: any) {
-      updateLastBotText(`${copy.bot.cantAnswer}: ${e?.message || "AI error"}`);
-    } finally {
-      setSending(false);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
+    dispatch(
+      aiChatThunk({
+        model: storedModel,
+        system,
+        text: t,
+        selectedTaskTitle,
+        lang: lang as Lang,
+      }),
+    );
+    setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  // ✅ Hydration flicker olmasın (senin HomeSections gibi)
   if (!ready) return null;
 
   return (
     <>
-      {/* Mobil overlay */}
       {open ? (
         <button
           type="button"
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-[2px] sm:hidden"
+          onClick={() => dispatch(setAiOpen(false))}
+          className="fixed inset-0 z-9998 bg-black/50 backdrop-blur-[2px]"
           aria-label={copy.a11y.closeOverlay}
         />
       ) : null}
 
-      <div className="fixed bottom-4 right-4 z-[9999] sm:bottom-6 sm:right-6">
-        <div className="flex flex-col items-end gap-3">
-          {open ? (
-            <div
-              className={cn(
-                "w-[calc(100vw-2rem)] sm:w-[400px]",
-                "max-h-[70vh] sm:max-h-[520px]",
-                "overflow-hidden rounded-3xl border shadow-2xl",
-                "border-slate-200 bg-white",
-                "dark:border-white/10 dark:bg-slate-950"
-              )}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-white/10">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-sm">
-                    <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 dark:from-sky-500 dark:to-blue-600" />
-                    <Bot className="relative h-5 w-5" />
-                  </span>
+      {!open ? (
+        <div className="fixed bottom-5 right-5 z-9999">
+          <button
+            onClick={() => dispatch(setAiOpen(true))}
+            className={cn(
+              "group relative flex items-center gap-3 rounded-2xl px-4 py-3 shadow-xl transition",
+              "bg-slate-900 text-white hover:opacity-95",
+              "dark:bg-white dark:text-slate-900",
+            )}
+            aria-label={copy.a11y.open}
+          >
+            <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 dark:bg-black/10">
+              <Bot className="h-5 w-5" />
+            </span>
+            <div className="hidden sm:block text-left">
+              <div className="text-sm font-extrabold leading-tight">
+                {copy.ui.title}
+              </div>
+              <div className="text-[11px] opacity-80">{copy.ui.subtitle}</div>
+            </div>
+            <span className="ml-0 sm:ml-2 inline-flex h-7 items-center rounded-full bg-white/10 px-2 text-[11px] font-bold">
+              {copy.ui.ask}
+            </span>
+          </button>
+        </div>
+      ) : null}
 
-                  <div className="min-w-0">
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">
-                      {copy.ui.title}
-                    </div>
-                    <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-                      {puterReady ? copy.ui.aiReady : copy.ui.aiNotReady}
-                      {selectedTaskTitle ? ` • ${selectedTaskTitle}` : ""}
-                    </div>
-                  </div>
+      {open ? (
+        <aside
+          className={cn(
+            "fixed z-9999 right-0 top-0 h-dvh w-full sm:w-110",
+            "bg-white dark:bg-slate-950",
+            "shadow-2xl",
+            "flex flex-col",
+          )}
+        >
+          <div className="relative px-5 pt-5 pb-4">
+            <div className="absolute inset-0 bg-linear-to-br from-sky-500/20 via-indigo-500/10 to-transparent dark:from-sky-500/10 dark:via-indigo-500/10" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-11 w-11 rounded-2xl bg-linear-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-sm">
+                  <Bot className="h-5 w-5" />
                 </div>
-
-                <button
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "inline-flex h-9 w-9 items-center justify-center rounded-2xl border text-sm font-bold transition",
-                    "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-                    "dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200 dark:hover:bg-slate-950/70"
-                  )}
-                  aria-label={copy.a11y.close}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Quick */}
-              <div className="flex flex-wrap gap-2 px-4 py-3">
-                <Quick onClick={() => quick("hello")} icon={<MessageCircle className="h-3.5 w-3.5" />}>
-                  {copy.quick.hello}
-                </Quick>
-                <Quick onClick={() => quick("fun")} icon={<Sparkles className="h-3.5 w-3.5" />}>
-                  {copy.quick.fun}
-                </Quick>
-                <Quick onClick={() => quick("planDay")} icon={<CalendarDays className="h-3.5 w-3.5" />}>
-                  {copy.quick.planDay}
-                </Quick>
-                <Quick onClick={() => quick("tonicaHelp")} icon={<Compass className="h-3.5 w-3.5" />}>
-                  {copy.quick.tonicaHelp}
-                </Quick>
-              </div>
-
-              {/* Messages */}
-              <div
-                ref={listRef}
-                className="px-4 pb-3 overflow-auto"
-                style={{ maxHeight: "calc(70vh - 176px)" }}
-              >
-                <div className="space-y-2">
-                  {msgs.map((m) => (
-                    <div
-                      key={m.id}
+                <div className="min-w-0">
+                  <div className="text-[13px] font-extrabold text-slate-900 dark:text-white">
+                    {copy.ui.title}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                    <span
                       className={cn(
-                        "rounded-2xl px-3 py-2 text-sm leading-relaxed",
-                        m.role === "bot"
-                          ? "bg-slate-100 text-slate-800 dark:bg-white/10 dark:text-slate-200"
-                          : "bg-blue-600 text-white dark:bg-sky-500"
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold",
+                        serverReady
+                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
                       )}
                     >
-                      <div
-                        className="prose prose-sm max-w-none prose-p:my-0 prose-ol:my-0 prose-ul:my-0 prose-li:my-0 dark:prose-invert"
-                        dangerouslySetInnerHTML={{ __html: renderMessage(m.text) }}
-                      />
-                    </div>
-                  ))}
-
-                  {sending ? (
-                    <div className="rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-600 dark:bg-white/10 dark:text-slate-300">
-                      {copy.ui.typing}
-                    </div>
-                  ) : null}
+                      {serverReady ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                      )}
+                      {serverReady ? copy.ui.aiReady : copy.ui.aiNotReady}
+                    </span>
+                    {selectedTaskTitle ? (
+                      <span className="truncate opacity-80">
+                        • {selectedTaskTitle}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
-              {/* Input */}
-              <div className="border-t border-slate-200 p-3 dark:border-white/10">
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={inputRef}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder={copy.ui.placeholder}
-                    className={cn(
-                      "h-11 w-full rounded-2xl border px-3 text-sm outline-none transition",
-                      "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400",
-                      "focus:border-blue-300 focus:ring-2 focus:ring-blue-200/60",
-                      "dark:border-white/10 dark:bg-slate-950/40 dark:text-white dark:placeholder:text-slate-500",
-                      "dark:focus:border-sky-500/50 dark:focus:ring-sky-900/40"
-                    )}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") onSend();
-                    }}
-                  />
+              <button
+                onClick={() => dispatch(setAiOpen(false))}
+                className={cn(
+                  "h-10 w-10 rounded-2xl border flex items-center justify-center transition",
+                  "border-slate-200 bg-white hover:bg-slate-50 text-slate-700",
+                  "dark:border-white/10 dark:bg-slate-950 dark:hover:bg-slate-900 dark:text-slate-200",
+                )}
+                aria-label={copy.a11y.close}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-                  <button
-                    onClick={onSend}
-                    disabled={!text.trim() || sending}
-                    className={cn(
-                      "h-11 rounded-2xl px-4 text-sm font-extrabold text-white transition inline-flex items-center gap-2",
-                      "bg-blue-600 hover:bg-blue-700",
-                      "dark:bg-sky-500 dark:hover:bg-sky-400",
-                      (!text.trim() || sending) && "opacity-60 cursor-not-allowed"
-                    )}
-                  >
-                    <Send className="h-4 w-4" />
-                    {copy.ui.send}
-                  </button>
-                </div>
-
-                <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-                  {copy.ui.model}: <span className="font-semibold">{model}</span>
-                </div>
+            <div className="relative mt-4">
+              <div className="text-[11px] font-extrabold tracking-wide text-slate-700 dark:text-slate-200">
+                {copy.ui.quickTitle}
+              </div>
+              <div className="mt-2 flex gap-2 overflow-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <QuickPill
+                  onClick={() => quick("hello")}
+                  icon={<MessageCircle className="h-4 w-4" />}
+                >
+                  {copy.quick.hello}
+                </QuickPill>
+                <QuickPill
+                  onClick={() => quick("fun")}
+                  icon={<Sparkles className="h-4 w-4" />}
+                >
+                  {copy.quick.fun}
+                </QuickPill>
+                <QuickPill
+                  onClick={() => quick("planDay")}
+                  icon={<CalendarDays className="h-4 w-4" />}
+                >
+                  {copy.quick.planDay}
+                </QuickPill>
+                <QuickPill
+                  onClick={() => quick("tonicaHelp")}
+                  icon={<Compass className="h-4 w-4" />}
+                >
+                  {copy.quick.tonicaHelp}
+                </QuickPill>
               </div>
             </div>
-          ) : null}
+          </div>
 
-          {/* Floating button */}
-          {!open ? (
-            <button
-              onClick={() => setOpen(true)}
+          <div
+            ref={listRef}
+            className={cn(
+              "flex-1 min-h-0",
+              "px-5 pb-6",
+              "overflow-y-auto overscroll-contain",
+              "invisible-scrollbar",
+              "scroll-smooth",
+            )}
+          >
+            <div
+              ref={listRef}
               className={cn(
-                "group relative flex items-center gap-3 rounded-full border px-3 py-3 shadow-2xl transition",
-                "border-slate-200 bg-white hover:bg-slate-50",
-                "dark:border-white/10 dark:bg-slate-950/70 dark:hover:bg-slate-950"
+                "h-full overflow-auto pr-1",
+                "rounded-3xl border",
+                "border-slate-200 bg-slate-50",
+                "dark:border-white/10 dark:bg-slate-900/30",
               )}
-              aria-label={copy.a11y.open}
             >
-              <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-full text-white shadow-sm">
-                <span className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 dark:from-sky-500 dark:to-blue-600" />
-                <Bot className="relative h-5 w-5" />
-              </span>
+              <div className="p-4 space-y-3">
+                {viewMsgs.map((m) => (
+                  <Bubble key={m.id} role={m.role} text={m.text} />
+                ))}
 
-              <div className="pr-1 text-left hidden sm:block">
-                <div className="text-sm font-extrabold text-slate-900 dark:text-white">
-                  {copy.ui.title}
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {copy.ui.subtitle}
+                {sending ? (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl bg-white px-3 py-2 text-sm text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200">
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
+                        {copy.ui.typing}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-white/10 px-5 py-4">
+            <div className="flex items-end gap-2">
+              <div className="flex-1 rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-slate-950">
+                <textarea
+                  ref={inputRef}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={copy.ui.placeholder}
+                  rows={2}
+                  className={cn(
+                    "w-full resize-none bg-transparent px-3 py-2 text-sm outline-none",
+                    "text-slate-900 placeholder:text-slate-500",
+                    "dark:text-white dark:placeholder:text-slate-500",
+                  )}
+                  disabled={sending}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      send(text);
+                    }
+                  }}
+                />
+                <div className="px-3 pb-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                  <span>
+                    {copy.ui.model}:{" "}
+                    <span className="font-semibold">{storedModel}</span>
+                  </span>
+                  <span className="hidden sm:inline opacity-80">
+                    Enter: gönder • Shift+Enter
+                  </span>
                 </div>
               </div>
 
-              <span className="ml-0 sm:ml-1 inline-flex h-7 items-center rounded-full bg-blue-50 px-2 text-[11px] font-bold text-blue-700 dark:bg-white/10 dark:text-sky-200">
-                {copy.ui.ask}
-              </span>
-            </button>
-          ) : null}
-        </div>
-      </div>
+              <button
+                onClick={() => send(text)}
+                disabled={!text.trim() || sending}
+                className={cn(
+                  "h-11.5 px-4 rounded-2xl font-extrabold text-white text-sm inline-flex items-center gap-2 transition",
+                  "bg-linear-to-br from-sky-500 to-indigo-600 hover:opacity-95",
+                  (!text.trim() || sending) && "opacity-50 cursor-not-allowed",
+                )}
+              >
+                <Send className="h-4 w-4" />
+                <span className="hidden sm:inline">{copy.ui.send}</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      ) : null}
     </>
   );
 }
 
-function Quick({
+function QuickPill({
   children,
   onClick,
   icon,
@@ -459,47 +481,69 @@ function Quick({
   onClick: () => void;
   icon?: React.ReactNode;
 }) {
-  const rendered = (() => {
-    if (typeof children !== "string") return children;
-    const idx = children.indexOf(":");
-    if (idx > -1) {
-      const head = children.slice(0, idx + 1);
-      const rest = children.slice(idx + 1);
-      return (
-        <>
-          <span className="font-extrabold">{head}</span>
-          <span>{rest}</span>
-        </>
-      );
-    }
-    return children;
-  })();
-
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold transition",
-        "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-        "dark:border-white/10 dark:bg-slate-950/40 dark:text-slate-200 dark:hover:bg-slate-950/70"
+        "shrink-0 inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12px] font-extrabold transition",
+        "bg-white border border-slate-200 text-slate-800 hover:bg-slate-50",
+        "dark:bg-slate-950 dark:border-white/10 dark:text-slate-200 dark:hover:bg-slate-900",
       )}
     >
       {icon ? <span className="opacity-90">{icon}</span> : null}
-      {rendered}
+      {children}
     </button>
   );
 }
 
+function Bubble({ role, text }: { role: "user" | "bot"; text: string }) {
+  const isBot = role === "bot";
+
+  return (
+    <div className={cn("flex", isBot ? "justify-start" : "justify-end")}>
+      <div
+        className={cn(
+          "max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm",
+          isBot
+            ? "bg-white text-slate-800 dark:bg-white/10 dark:text-slate-200"
+            : "bg-linear-to-br from-slate-900 to-slate-700 text-white dark:from-sky-500 dark:to-indigo-600",
+        )}
+      >
+        <div
+          className="prose prose-sm max-w-none prose-p:my-0 prose-ol:my-0 prose-ul:my-0 prose-li:my-0 dark:prose-invert"
+          dangerouslySetInnerHTML={{ __html: renderMessage(text) }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function renderMessage(text: string) {
-  let html = String(text || "");
-  html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safe = typeof text === "string" ? text : "";
+  let html = safe;
+
+  html = html
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
   html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
-  const hasList = /^\s*\d+\.\s+/m.test(html);
-  html = html.replace(/^\s*\d+\.\s+(.*)$/gm, "<li>$1</li>");
-  if (hasList) html = `<ol class="list-decimal pl-5 space-y-1">${html}</ol>`;
+  const lines = html.split("\n");
+  const looksLikeList = lines.some((l) => /^\s*\d+\.\s+/.test(l));
 
-  html = html.replace(/\n/g, "<br/>");
+  if (looksLikeList) {
+    const items = lines
+      .map((l) => {
+        const m = l.match(/^\s*\d+\.\s+(.*)$/);
+        return m ? `<li>${m[1]}</li>` : l ? `<li>${l}</li>` : "";
+      })
+      .filter(Boolean)
+      .join("");
+    html = `<ol class="list-decimal pl-5 space-y-1">${items}</ol>`;
+  } else {
+    html = html.replace(/\n/g, "<br/>");
+  }
+
   return html;
 }

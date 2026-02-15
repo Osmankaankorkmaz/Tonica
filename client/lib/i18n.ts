@@ -96,7 +96,7 @@ export const LANG_EVENT = "tonica-lang-change" as const;
 
 export function setLangPersist(next: Lang) {
   localStorage.setItem(LANG_KEY, next);
-  window.dispatchEvent(new Event(LANG_EVENT)); // ✅ aynı sekmeye bildir
+  window.dispatchEvent(new Event(LANG_EVENT));
 }
 
 export function getLangPersist(): Lang {
