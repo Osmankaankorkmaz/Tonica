@@ -150,7 +150,6 @@ export default function TonicaLoginPage() {
       password: "Şifre",
       passwordPh: "Şifren",
       remember: "Beni hatırla",
-      forgot: "Şifremi unuttum",
       loginBtn: "Giriş Yap",
       logging: "Giriş yapılıyor...",
       kvkkText1: "Giriş yaparak",
@@ -186,7 +185,6 @@ export default function TonicaLoginPage() {
       password: "Password",
       passwordPh: "Your password",
       remember: "Remember me",
-      forgot: "Forgot password",
       loginBtn: "Sign in",
       logging: "Signing in...",
       kvkkText1: "By signing in, you agree to the",
@@ -336,10 +334,6 @@ export default function TonicaLoginPage() {
                       />
                       {copy.remember}
                     </label>
-
-                    <Link href="/forgot-password" className="text-xs font-semibold text-blue-700 hover:underline dark:text-sky-300">
-                      {copy.forgot}
-                    </Link>
                   </div>
                 </label>
 

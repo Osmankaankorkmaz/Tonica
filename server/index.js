@@ -1,4 +1,4 @@
-// index.js (veya app.js) — TONICA ONLY (FULL)
+// index.js (veya app.js) — TONICA ONLY (FULL) ✅
 
 const express = require("express");
 const cors = require("cors");
@@ -41,8 +41,8 @@ cloudinary.v2.config({
 const app = express();
 
 /** ---------- Basic middleware ---------- */
-app.use(logger(process.env.LOGGER || "dev"));
 app.set("trust proxy", 1);
+app.use(logger(process.env.LOGGER || "dev"));
 
 /** ---------- Helmet ---------- */
 app.use(
@@ -51,6 +51,7 @@ app.use(
   })
 );
 
+/** ---------- CORS ---------- */
 const ALLOWED_ORIGINS = new Set([
   // local
   "http://localhost:3000",
@@ -64,13 +65,11 @@ const ALLOWED_ORIGINS = new Set([
   "https://tonica.com.tr",
 ]);
 
-// Sadece Tonica preview domainleri (Vercel)
-const ALLOWED_ORIGIN_REGEX = [
-  /^https:\/\/.*-osmankaankorkmazs-projects\.vercel\.app$/,
-];
+// Vercel preview domainleri (Tonica)
+const ALLOWED_ORIGIN_REGEX = [/^https:\/\/.*-osmankaankorkmazs-projects\.vercel\.app$/];
 
 function isAllowedOrigin(origin) {
-  if (!origin) return true; // Postman / server-to-server vb.
+  if (!origin) return true; // Postman / server-to-server
   if (ALLOWED_ORIGINS.has(origin)) return true;
   return ALLOWED_ORIGIN_REGEX.some((re) => re.test(origin));
 }
@@ -87,8 +86,29 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
+// 1) cors middleware
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+
+// 2) Preflight'ı kesin yakala (Express'te "*" yerine /.*/ daha sağlam)
+app.options(/.*/, cors(corsOptions));
+
+// 3) SIGORTA: Bazı proxy/cpanel ortamlarında cors middleware çalışsa bile
+// OPTIONS yanıtında header basılmayabiliyor. Bu blok kesin çözer.
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (origin && isAllowedOrigin(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Vary", "Origin");
+  }
+
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  return next();
+});
 
 /** ---------- Parsers ---------- */
 app.use(cookieParser());
@@ -122,6 +142,14 @@ passport.use(
     }
   })
 );
+
+/** ---------- Debug (isteğe bağlı) ----------
+ * CORS hala sorun çıkartırsa aç:
+ * app.use((req, _res, next) => {
+ *   console.log("REQ:", req.method, req.url, "ORIGIN:", req.headers.origin);
+ *   next();
+ * });
+ */
 
 /** ---------- Routes ---------- */
 app.use("/", authRoutes);
