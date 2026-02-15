@@ -84,17 +84,20 @@ export default function Tonibot({
 
   const [text, setText] = useState("");
 
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // ✅ Tonica/Tonibot creator "fact"
+  const CREATOR = "Osman Kaan Korkmaz";
 
   useEffect(() => {
     dispatch(aiInitThunk());
   }, [dispatch]);
 
-
+  // keep store model in sync with prop model (if provided)
   useEffect(() => {
     if (model && model !== storedModel) dispatch(setAiModel(model));
-  }, [model, dispatch]);
+  }, [model, storedModel, dispatch]);
 
   const copy = useMemo(() => {
     const tr = {
@@ -114,6 +117,7 @@ export default function Tonibot({
         aiReady: "Bağlı",
         aiNotReady: "Bağlantı yok",
         quickTitle: "Hızlı Başlat",
+        builtBy: "Yapımcı",
       },
       bot: {
         welcome:
@@ -150,6 +154,7 @@ export default function Tonibot({
         aiReady: "Online",
         aiNotReady: "Offline",
         quickTitle: "Quick start",
+        builtBy: "Built by",
       },
       bot: {
         welcome:
@@ -174,25 +179,39 @@ export default function Tonibot({
 
   const system = useMemo(() => {
     const isTR = (lang as Lang) === "tr";
+
     return [
+      // identity
       "You are Tonibot, a friendly chat assistant inside the Tonica app.",
       `Language: respond in ${isTR ? "Turkish" : "English"}.`,
+
       "",
+      // ✅ persistent product facts
+      "IMPORTANT FACTS (always true):",
+      `- The creator/developer of Tonica is: ${CREATOR}.`,
+      `- The creator/developer of Tonibot is: ${CREATOR}.`,
+      "If the user asks who made Tonica/Tonibot, answer with this name.",
+
+      "",
+      // scope
       "SCOPE (soft restriction):",
       "- You can answer: Tonica usage, tasks, TODO workflows, productivity, planning, focus, habits, motivation, light casual chat.",
       "- You should avoid: medical/legal/financial advice, politics, explicit adult content, hacking/illegal instructions, or anything unrelated to Tonica/productivity.",
+
       "",
+      // style
       "STYLE:",
       isTR
         ? "- Friendly, short, practical. Use simple Turkish."
         : "- Friendly, short, practical. Use simple English.",
+
       selectedTaskTitle
         ? `Context: user has a selected task titled: "${selectedTaskTitle}".`
         : "",
     ]
       .filter(Boolean)
       .join("\n");
-  }, [selectedTaskTitle, lang]);
+  }, [selectedTaskTitle, lang, CREATOR]);
 
   const safeMsgs = useMemo(() => normalizeMsgs(msgsRaw), [msgsRaw]);
   const viewMsgs: UiMsg[] =
@@ -204,17 +223,16 @@ export default function Tonibot({
     if (!open) return;
     const t = setTimeout(() => {
       inputRef.current?.focus();
-      listRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
+      scrollRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
     }, 80);
     return () => clearTimeout(t);
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(
-      () => listRef.current?.scrollTo({ top: 999999, behavior: "smooth" }),
-      60,
-    );
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
+    }, 60);
     return () => clearTimeout(t);
   }, [open, viewMsgs.length, sending]);
 
@@ -254,6 +272,7 @@ export default function Tonibot({
 
   return (
     <>
+      {/* overlay */}
       {open ? (
         <button
           type="button"
@@ -263,6 +282,7 @@ export default function Tonibot({
         />
       ) : null}
 
+      {/* floating launcher */}
       {!open ? (
         <div className="fixed bottom-5 right-5 z-9999">
           <button
@@ -290,6 +310,7 @@ export default function Tonibot({
         </div>
       ) : null}
 
+      {/* panel */}
       {open ? (
         <aside
           className={cn(
@@ -299,6 +320,7 @@ export default function Tonibot({
             "flex flex-col",
           )}
         >
+          {/* header */}
           <div className="relative px-5 pt-5 pb-4">
             <div className="absolute inset-0 bg-linear-to-br from-sky-500/20 via-indigo-500/10 to-transparent dark:from-sky-500/10 dark:via-indigo-500/10" />
             <div className="relative flex items-start justify-between gap-3">
@@ -306,10 +328,12 @@ export default function Tonibot({
                 <div className="h-11 w-11 rounded-2xl bg-linear-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-sm">
                   <Bot className="h-5 w-5" />
                 </div>
+
                 <div className="min-w-0">
                   <div className="text-[13px] font-extrabold text-slate-900 dark:text-white">
                     {copy.ui.title}
                   </div>
+
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
                     <span
                       className={cn(
@@ -326,11 +350,17 @@ export default function Tonibot({
                       )}
                       {serverReady ? copy.ui.aiReady : copy.ui.aiNotReady}
                     </span>
+
                     {selectedTaskTitle ? (
                       <span className="truncate opacity-80">
                         • {selectedTaskTitle}
                       </span>
                     ) : null}
+                  </div>
+
+                  {/* optional tiny credit line */}
+                  <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    {copy.ui.builtBy}: <span className="font-semibold">{CREATOR}</span>
                   </div>
                 </div>
               </div>
@@ -348,6 +378,7 @@ export default function Tonibot({
               </button>
             </div>
 
+            {/* quick actions */}
             <div className="relative mt-4">
               <div className="text-[11px] font-extrabold tracking-wide text-slate-700 dark:text-slate-200">
                 {copy.ui.quickTitle}
@@ -381,20 +412,12 @@ export default function Tonibot({
             </div>
           </div>
 
-          <div
-            ref={listRef}
-            className={cn(
-              "flex-1 min-h-0",
-              "px-5 pb-6",
-              "overflow-y-auto overscroll-contain",
-              "invisible-scrollbar",
-              "scroll-smooth",
-            )}
-          >
+          {/* messages */}
+          <div className="flex-1 min-h-0 px-5 pb-6">
             <div
-              ref={listRef}
+              ref={scrollRef}
               className={cn(
-                "h-full overflow-auto pr-1",
+                "h-full overflow-y-auto overscroll-contain pr-1",
                 "rounded-3xl border",
                 "border-slate-200 bg-slate-50",
                 "dark:border-white/10 dark:bg-slate-900/30",
@@ -419,6 +442,7 @@ export default function Tonibot({
             </div>
           </div>
 
+          {/* composer */}
           <div className="border-t border-slate-200 dark:border-white/10 px-5 py-4">
             <div className="flex items-end gap-2">
               <div className="flex-1 rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-slate-950">
@@ -441,13 +465,16 @@ export default function Tonibot({
                     }
                   }}
                 />
+
                 <div className="px-3 pb-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
                   <span>
                     {copy.ui.model}:{" "}
                     <span className="font-semibold">{storedModel}</span>
                   </span>
                   <span className="hidden sm:inline opacity-80">
-                    Enter: gönder • Shift+Enter
+                    {lang === "tr"
+                      ? "Enter: gönder • Shift+Enter: satır"
+                      : "Enter: send • Shift+Enter: new line"}
                   </span>
                 </div>
               </div>
@@ -471,6 +498,8 @@ export default function Tonibot({
     </>
   );
 }
+
+/* ---------------- UI bits ---------------- */
 
 function QuickPill({
   children,
@@ -523,10 +552,10 @@ function renderMessage(text: string) {
   const safe = typeof text === "string" ? text : "";
   let html = safe;
 
-  html = html
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  // escape
+  html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // simple bold
   html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
   const lines = html.split("\n");
