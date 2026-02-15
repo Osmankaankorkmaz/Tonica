@@ -1,6 +1,6 @@
 
 export const API_BASE = (
-  process.env.NEXT_PUBLIC_API_BASE || "https://api.tonica.meowsoftware.com.tr/"
+"https://api.tonica.meowsoftware.com.tr/"
 ).replace(/\/+$/, "");
 
 const TOKEN_KEY = "tonica_token";
