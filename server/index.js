@@ -70,9 +70,12 @@ const ALLOWED_ORIGINS = new Set([
   "https://meowsoftware.com.tr",
   "https://www.meowsoftware.com.tr",
   "https://api.meowsoftware.com.tr",
+  "https://api.tonica.meowsoftware.com.tr",
 
   // vercel prod (varsa)
-  "https://argena-hesapla.vercel.app",
+  "https://tonica.vercel.app/",
+  "https://tonica.com.tr"
+
 ]);
 
 const ALLOWED_ORIGIN_REGEX = [
