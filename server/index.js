@@ -1,4 +1,4 @@
-// index.js (veya app.js) — FULL
+// index.js (veya app.js) — TONICA ONLY (FULL)
 
 const express = require("express");
 const cors = require("cors");
@@ -18,8 +18,6 @@ const authRoutes = require("./routes/auth.js");
 const aiRoutes = require("./routes/ai.js");
 const taskRoutes = require("./routes/tasks.js");
 const focusRoutes = require("./routes/focus.js");
-
-
 
 dotenv.config();
 
@@ -53,34 +51,22 @@ app.use(
   })
 );
 
-/** ---------- CORS (cookie destekli + prod uyumlu) ---------- */
-/**
- * Notlar:
- * - credentials: true ise origin "*" OLAMAZ.
- * - Vercel preview domainleri her deploy’da değişebilir -> regex ile izin veriyoruz.
- * - İstersen regex’i kapatıp sadece sabit domainlerle ilerleyebilirsin.
- */
 const ALLOWED_ORIGINS = new Set([
   // local
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "http://localhost:5173",
 
-  // prod domainlerin
+  // prod FE domainleri
   "https://meowsoftware.com.tr",
   "https://www.meowsoftware.com.tr",
-  "https://api.meowsoftware.com.tr",
-  "https://api.tonica.meowsoftware.com.tr",
-
-  // vercel prod (varsa)
-  "https://tonica.vercel.app/",
-  "https://tonica.com.tr"
-
+  "https://tonica.vercel.app",
+  "https://tonica.com.tr",
 ]);
 
+// Sadece Tonica preview domainleri (Vercel)
 const ALLOWED_ORIGIN_REGEX = [
   /^https:\/\/.*-osmankaankorkmazs-projects\.vercel\.app$/,
-  /^https:\/\/argena-hesapla-.*\.vercel\.app$/,
 ];
 
 function isAllowedOrigin(origin) {
@@ -137,20 +123,24 @@ passport.use(
   })
 );
 
+/** ---------- Routes ---------- */
 app.use("/", authRoutes);
 app.use("/", aiRoutes);
 app.use("/", taskRoutes);
 app.use("/", focusRoutes);
 
+/** ---------- CORS error handler (nice JSON) ---------- */
 app.use((err, req, res, next) => {
   if (err?.message?.startsWith("Not allowed by CORS")) {
-    return res.status(403).json({ message: err.message });
+    return res.status(403).json({ ok: false, message: err.message });
   }
   return next(err);
 });
 
+/** ---------- Generic Error Handler ---------- */
 app.use(GenericErrorHandler);
 
+/** ---------- Listen ---------- */
 const PORT = Number(process.env.PORT || 4000);
 app.listen(PORT, () => {
   console.log(`✅ Express uygulaması ${PORT} portunda çalışıyor`);
